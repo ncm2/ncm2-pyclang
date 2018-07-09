@@ -20,7 +20,12 @@ typedef shared_ptr<CXCodeCompleteResults> CodeCompleteResultsSP;
 class LibClang
 {
 public:
-    LibClang() { idx_ = clang_createIndex(1, 1); }
+    LibClang()
+    {
+        idx_ = clang_createIndex(1, 0);
+        clang_CXIndex_setGlobalOptions(
+            idx_, CXGlobalOpt_ThreadBackgroundPriorityForEditing);
+    }
 
     LibClang(const LibClang &&) = delete;
     LibClang &operator=(const LibClang &&) = delete;
@@ -142,8 +147,10 @@ private:
         //                                                     vc_unsavedf.size(),
         //                                                     vc_unsavedf.data());
 
-        tu_flags |= CXTranslationUnit_CacheCompletionResults;
         tu_flags |= CXTranslationUnit_KeepGoing;
+        tu_flags |= CXTranslationUnit_CacheCompletionResults;
+        tu_flags |= CXTranslationUnit_SkipFunctionBodies;
+        tu_flags |= CXTranslationUnit_Incomplete;
 
         auto tu = clang_parseTranslationUnit(idx_,
                                              fpath.c_str(),
