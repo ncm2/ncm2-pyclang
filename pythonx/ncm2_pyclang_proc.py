@@ -155,6 +155,12 @@ class Source(Ncm2Source):
 
         start = time.time()
 
+        if ncm2_ctx['scope'] != ncm2_ctx['filetype']:
+            if ncm2_ctx['scope'] == 'cpp':
+                filepath += '.cpp'
+            else:
+                filepath += '.c'
+
         tu = self.get_tu(filepath, args, directory, src)
 
         CXCodeComplete_IncludeMacros = 0x01

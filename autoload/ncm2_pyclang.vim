@@ -23,6 +23,7 @@ let g:ncm2_pyclang#source = get(g:, 'ncm2_pyclang#source', {
             \ 'scope': ['cpp', 'c'],
             \ 'priority': 9,
             \ 'mark': 'cxx',
+            \ 'subscope_enable': 1,
             \ 'on_complete': 'ncm2_pyclang#on_complete',
             \ 'on_warmup': 'ncm2_pyclang#on_warmup',
             \ 'complete_pattern': ['-\>', '::', '\.']
@@ -41,7 +42,7 @@ func! ncm2_pyclang#_proc_started()
 endfunc
 
 func! ncm2_pyclang#on_warmup(ctx)
-    if &filetype != 'cpp' && filetype != 'c'
+    if &filetype != 'cpp' && &filetype != 'c'
         call g:ncm2_pyclang#proc.jobstart()
         return
     endif
