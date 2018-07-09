@@ -14,7 +14,7 @@ sys.path.insert(0, path.join(dirname(__file__), '3rd'))
 
 from ncm2_pyclang import args_from_cmake, args_from_clang_complete
 from clang import cindex
-from clang.cindex import CodeCompletionResult
+from clang.cindex import CodeCompletionResult, CompletionString
 
 logger = getLogger(__name__)
 
@@ -71,6 +71,7 @@ class Source(Ncm2Source):
     def cache_add(self, ncm2_ctx, data, lines):
         src = self.get_src("\n".join(lines), ncm2_ctx)
         filepath = ncm2_ctx['filepath']
+        changedtick = ncm2_ctx['changedtick']
         args, directory = self.get_args_dir(ncm2_ctx, data)
         start = time.time()
 
@@ -79,12 +80,17 @@ class Source(Ncm2Source):
             cache = self.tu_cache[filepath]
             if check == cache['check']:
                 tu = cache['tu']
+                if changedtick == cache['changedtick']:
+                    logger.info("changedtick is the same, skip reparse")
+                    return
                 self.reparse_tu(tu, filepath, src)
+                logger.debug("cache_add reparse existing done")
                 return
             del self.tu_cache[filepath]
 
         cache = {}
         cache['check'] = check
+        cache['changedtick'] = changedtick
 
         tu = self.create_tu(filepath, args, directory, src)
         cache['tu'] = tu
@@ -96,7 +102,7 @@ class Source(Ncm2Source):
         self.reparse_tu(tu, filepath, src)
 
         end = time.time()
-        logger.debug("cache_file time: %s", end - start)
+        logger.debug("cache_add done. time: %s", end - start)
 
     def cache_del(self, filepath):
         if filepath in self.tu_cache:
@@ -110,7 +116,7 @@ class Source(Ncm2Source):
                 logger.info("cache hit")
                 return cache['tu']
             logger.info("%s tu invalidated by check %s -> %s",
-                     check, cache['check'])
+                        check, cache['check'])
             self.cache_del(filepath)
         logger.info("cache miss")
         return self.create_tu(filepath, args, directory, src)
@@ -118,8 +124,8 @@ class Source(Ncm2Source):
     def create_tu(self, filepath, args, directory, src):
         CXTranslationUnit_KeepGoing = 0x200
 
-            # cindex.TranslationUnit.PARSE_DETAILED_PROCESSING_RECORD | \
         flags = cindex.TranslationUnit.PARSE_PRECOMPILED_PREAMBLE | \
+            cindex.TranslationUnit.PARSE_DETAILED_PROCESSING_RECORD | \
             cindex.TranslationUnit.PARSE_CACHE_COMPLETION_RESULTS | \
             cindex.TranslationUnit.PARSE_SKIP_FUNCTION_BODIES | \
             cindex.TranslationUnit.PARSE_INCOMPLETE | \
@@ -162,6 +168,9 @@ class Source(Ncm2Source):
         matches = []
         for res in results:
             item = self.format_complete_item(res)
+            # filter it's kind of useless for completion
+            if item['word'].startswith('operator '):
+                continue
             matches.append(item)
 
         end = time.time()
@@ -170,17 +179,13 @@ class Source(Ncm2Source):
 
         self.complete(ncm2_ctx, startccol, matches)
 
-    def format_complete_item(self, result):
-        """
-        @type result:  CodeCompletionResult
-        """
-
+    def format_complete_item(self, result: CodeCompletionResult):
         result_type = None
         word = ""
         snippet = ""
         info = ""
 
-        def roll_out_optional(chunks):
+        def roll_out_optional(chunks: CompletionString):
             result = []
             word = ""
             for chunk in chunks:
@@ -212,12 +217,12 @@ class Source(Ncm2Source):
 
             if chunk.isKindOptional():
                 for arg in roll_out_optional(chunk.string):
-                    snippet += self.snippet_placeholder(
+                    snippet += self.lsp_snippet_placeholder(
                         placeholder_num, arg)
                     placeholder_num += 1
                     info += "[" + arg + "]"
             elif chunk.isKindPlaceHolder():
-                snippet += self.snippet_placeholder(
+                snippet += self.lsp_snippet_placeholder(
                     placeholder_num, chunk_text)
                 placeholder_num += 1
                 info += chunk_text
@@ -243,7 +248,7 @@ class Source(Ncm2Source):
         completion['dup'] = 1
         return completion
 
-    def snippet_placeholder(self, num, txt=''):
+    def lsp_snippet_placeholder(self, num, txt=''):
         txt = txt.replace('\\', '\\\\')
         txt = txt.replace('$', r'\$')
         txt = txt.replace('}', r'\}')
