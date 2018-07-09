@@ -1,9 +1,11 @@
 
 ## Introduction
 
-C/C++ completion based on [libclang python
+C/C++ code completion plugin for [ncm2](https://github.com/ncm2/ncm2)
+
+This plugin is based on [libclang python
 binding](https://github.com/llvm-mirror/clang). Inspired by
-[clang_complete](https://github.com/Rip-Rip/clang_complete)
+[clang_complete](https://github.com/Rip-Rip/clang_complete).
 
 ## Config
 
