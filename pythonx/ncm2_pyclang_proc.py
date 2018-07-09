@@ -129,11 +129,10 @@ class Source(Ncm2Source):
 
         flags = cindex.TranslationUnit.PARSE_PRECOMPILED_PREAMBLE | \
             cindex.TranslationUnit.PARSE_DETAILED_PROCESSING_RECORD | \
-            cindex.TranslationUnit.PARSE_CACHE_COMPLETION_RESULTS
-
-            # cindex.TranslationUnit.PARSE_SKIP_FUNCTION_BODIES | \
-            # cindex.TranslationUnit.PARSE_INCOMPLETE | \
-            # CXTranslationUnit_KeepGoing
+            cindex.TranslationUnit.PARSE_CACHE_COMPLETION_RESULTS | \
+            cindex.TranslationUnit.PARSE_SKIP_FUNCTION_BODIES | \
+            cindex.TranslationUnit.PARSE_INCOMPLETE | \
+            CXTranslationUnit_KeepGoing
 
         logger.info("flags %s", flags)
 
@@ -303,3 +302,4 @@ source = Source(vim)
 on_complete = source.on_complete
 cache_add = source.cache_add
 find_declaration = source.find_declaration
+cache_del = source.cache_del
