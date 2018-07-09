@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from ncm2 import Ncm2Source, getLogger
+from ncm2 import Ncm2Source, getLogger, Popen
 import subprocess
 import re
 from os.path import dirname
@@ -32,10 +32,10 @@ class Source(Ncm2Source):
             raise Exception("%s doesn't exist, please compile it" %
                             ncm_libclang_bin[0])
 
-        self.proc = subprocess.Popen(args=ncm_libclang_bin,
-                                     stdin=subprocess.PIPE,
-                                     stdout=subprocess.PIPE,
-                                     stderr=subprocess.DEVNULL)
+        self.proc = Popen(args=ncm_libclang_bin,
+                          stdin=subprocess.PIPE,
+                          stdout=subprocess.PIPE,
+                          stderr=subprocess.DEVNULL)
 
         nvim.command(
             "call ncm2_libclang#on_warmup(ncm2#context())", async_=True)
