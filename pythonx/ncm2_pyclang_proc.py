@@ -14,7 +14,7 @@ sys.path.insert(0, path.join(dirname(__file__), '3rd'))
 
 from ncm2_pyclang import args_from_cmake, args_from_clang_complete
 from clang import cindex
-from clang.cindex import CodeCompletionResult, CompletionString
+from clang.cindex import CodeCompletionResult, CompletionString, SourceLocation, Cursor, File
 
 logger = getLogger(__name__)
 
@@ -113,8 +113,10 @@ class Source(Ncm2Source):
         check = dict(args=args, directory=directory)
         if filepath in self.tu_cache:
             cache = self.tu_cache[filepath]
+            tu = cache['tu']
             if check == cache['check']:
                 logger.info("%s tu is cached", filepath)
+                self.reparse_tu(tu, filepath, src)
                 return cache['tu']
             logger.info("%s tu invalidated by check %s -> %s",
                         check, cache['check'])
@@ -127,10 +129,11 @@ class Source(Ncm2Source):
 
         flags = cindex.TranslationUnit.PARSE_PRECOMPILED_PREAMBLE | \
             cindex.TranslationUnit.PARSE_DETAILED_PROCESSING_RECORD | \
-            cindex.TranslationUnit.PARSE_CACHE_COMPLETION_RESULTS | \
-            cindex.TranslationUnit.PARSE_SKIP_FUNCTION_BODIES | \
-            cindex.TranslationUnit.PARSE_INCOMPLETE | \
-            CXTranslationUnit_KeepGoing
+            cindex.TranslationUnit.PARSE_CACHE_COMPLETION_RESULTS
+
+            # cindex.TranslationUnit.PARSE_SKIP_FUNCTION_BODIES | \
+            # cindex.TranslationUnit.PARSE_INCOMPLETE | \
+            # CXTranslationUnit_KeepGoing
 
         logger.info("flags %s", flags)
 
@@ -257,8 +260,40 @@ class Source(Ncm2Source):
             return '${%s}' % num
         return '${%s:%s}' % (num, txt)
 
+    def find_declaration(self, ncm2_ctx, data, lines):
+        src = self.get_src("\n".join(lines), ncm2_ctx)
+        filepath = ncm2_ctx['filepath']
+        bcol = ncm2_ctx['bcol']
+        lnum = ncm2_ctx['lnum']
+
+        args, directory = self.get_args_dir(ncm2_ctx, data)
+
+        tu = self.get_tu(filepath, args, directory, src)
+
+        f = File.from_name(tu, filepath)
+        location = SourceLocation.from_position(tu, f, lnum, bcol)
+        cursor = Cursor.from_location(tu, location)
+
+        defs = [cursor.get_definition(), cursor.referenced]
+        for d in defs:
+            if d is None:
+                logger.info("d None")
+                continue
+
+            d_loc = d.location
+            if d_loc.file is None:
+                logger.info("location.file None")
+                continue
+
+            ret = {}
+            ret['file'] = d_loc.file.name
+            ret['lnum'] = d_loc.line
+            ret['bcol'] = d_loc.column
+            return ret
+        return {}
 
 source = Source(vim)
 
 on_complete = source.on_complete
 cache_add = source.cache_add
+find_declaration = source.find_declaration

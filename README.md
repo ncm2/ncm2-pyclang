@@ -30,3 +30,9 @@ something like:
 -include ../config.h
 -I../common
 ```
+
+### Goto Declaration
+
+```vim
+    autocmd FileType c,cpp nnoremap <buffer> gd :<c-u>call ncm2_pyclang#goto_declaration()<cr>
+```

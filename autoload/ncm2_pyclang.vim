@@ -78,3 +78,31 @@ func! ncm2_pyclang#_data()
                 \ }
 endfunc
 
+func ncm2_pyclang#find_declaration()
+    let pos = g:ncm2_pyclang#proc.call('find_declaration',
+                \ ncm2#context(),
+                \ ncm2_pyclang#_data(),
+                \ getline(1, '$'))
+    if empty(pos)
+        echohl ErrorMsg
+        echom "Cannot find declaration"
+        echohl None
+    endif
+    return pos
+endfunc
+
+func ncm2_pyclang#goto_declaration()
+    let pos = ncm2_pyclang#find_declaration()
+    if empty(pos)
+        return
+    endif
+    let filepath = expand("%:p")
+    if filepath != pos.file
+        let fes = fnameescape(string)
+        exe 'edit' fes
+    else
+        normal! m'
+    endif
+    call cursor(pos.lnum, pos.bcol)
+endfunc
+
