@@ -143,6 +143,7 @@ private:
         //                                                     vc_unsavedf.data());
 
         tu_flags |= CXTranslationUnit_CacheCompletionResults;
+        tu_flags |= CXTranslationUnit_KeepGoing;
 
         auto tu = clang_parseTranslationUnit(idx_,
                                              fpath.c_str(),
