@@ -1,23 +1,32 @@
 
-## Install
+## Introduction
 
-Install requirements on Debian:
+C/C++ completion based on [libclang python
+binding](https://github.com/llvm-mirror/clang). Inspired by
+[clang_complete](https://github.com/Rip-Rip/clang_complete)
 
-```bash
-sudo apt install g++ nlohmann-json-dev libclang-5.0-dev
-```
-
-Compile the plugin binary:
-
-```bash
-cd ncm2-libclang
-g++ src/ncm2_libclang.cpp -std=c++11 -I /usr/lib/llvm-5.0/include/ /usr/lib/llvm-5.0/lib/libclang.so -o bin/ncm2_libclang
-```
-
-If you're using
-[vim-plug](https://github.com/junegunn/vim-plug).
+## Config
 
 ```vim
-Plug "ncm2/ncm2-libclang", {"do": "g++ src/ncm2_libclang.cpp -std=c++11 -I /usr/lib/llvm-5.0/include/ /usr/lib/llvm-5.0/lib/libclang.so -o bin/ncm2_libclang"}
+" path to directory where libclang.so can be found
+let g:ncm2_pyclang#library_path = '/usr/lib/llvm-5.0/lib'
+
+" or path to the libclang.so file
+let g:ncm2_pyclang#library_path = '/usr/lib64/libclang.so.5.0'
+
+" a list of relative paths for compile_commands.json
+let g:ncm2_pyclang#database_path = [
+            \ 'compile_commands.json',
+            \ 'build/compile_commands.json'
+            \ ]
 ```
 
+If your build system doesn't generate `compile_commands.json`, you could put a
+`.clang_complete` file into your project directory, which sould contain
+something like:
+
+```
+-DDEBUG
+-include ../config.h
+-I../common
+```

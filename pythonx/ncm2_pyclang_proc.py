@@ -24,11 +24,12 @@ class Source(Ncm2Source):
     def __init__(self, nvim):
         Ncm2Source.__init__(self, nvim)
 
-        # FIXME
-        # dir
-        cindex.Config.set_library_path('/usr/lib/llvm-5.0/lib')
-        # file
-        # cindex.Config.set_library_file(filename)
+        library_path = nvim.vars['ncm2_pyclang#library_path']
+        if path.isdir(library_path):
+            cindex.Config.set_library_path(library_path)
+        elif path.isfile(library_path):
+            cindex.Config.set_library_file(library_path)
+
         cindex.Config.set_compatibility_check(False)
 
         self.index = cindex.Index.create(excludeDecls=False)
@@ -113,7 +114,7 @@ class Source(Ncm2Source):
         if filepath in self.tu_cache:
             cache = self.tu_cache[filepath]
             if check == cache['check']:
-                logger.info("cache hit")
+                logger.info("%s tu is cached", filepath)
                 return cache['tu']
             logger.info("%s tu invalidated by check %s -> %s",
                         check, cache['check'])

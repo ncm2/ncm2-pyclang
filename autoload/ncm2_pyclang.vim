@@ -3,6 +3,10 @@ if get(s:, 'loaded', 0)
 endif
 let s:loaded = 1
 
+let g:ncm2_pyclang#library_path = get(g:,
+            \ 'ncm2_pyclang#library_path',
+            \ '')
+
 let g:ncm2_pyclang#database_path = get(g:,
             \ 'ncm2_pyclang#database_path',
             \ [
@@ -73,23 +77,4 @@ func! ncm2_pyclang#_data()
                 \ 'database_path': g:ncm2_pyclang#database_path,
                 \ }
 endfunc
-
-" fun! ncm2_pyclang#compilation_info()
-"     py3 << EOF
-" import vim
-" import ncm2_pyclang
-" from os import path
-" filepath = vim.eval("expand('%:p')")
-" filedir = path.dirname(filepath)
-" ctx = vim.eval("ncm2_pyclang#_data()")
-" cwd = ctx['cwd']
-" database_path = ctx['database_path']
-" args, directory = ncm2_pyclang.args_from_cmake(filepath, cwd, database_path)
-" if not args:
-"     args, directory = ncm2_pyclang.args_from_clang_complete(filepath, cwd)
-" ret = dict(args=args or [], directory=directory or cwd)
-" ret['args'] = ['-I' + filedir] + ret['args']
-" EOF
-"     return py3eval('ret')
-" endf
 
