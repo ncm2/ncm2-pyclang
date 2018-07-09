@@ -99,7 +99,7 @@ func ncm2_pyclang#goto_declaration()
     endif
     let filepath = expand("%:p")
     if filepath != pos.file
-        let fes = fnameescape(string)
+        let fes = fnameescape(pos.file)
         exe 'edit' fes
     else
         normal! m'
