@@ -42,10 +42,19 @@ func! ncm2_libclang#on_warmup(ctx)
         return
     endif
 
-    call g:ncm2_libclang#proc.try_notify('cache_file',
+    call g:ncm2_libclang#proc.try_notify('cache_add',
                 \ a:ctx,
                 \ getline(1, '$'),
                 \ ncm2_libclang#_ctx())
+
+    if get(b:, 'b:ncm2_libclang_cache') == 0
+        au BufDelete <buffer> call 
+                    \ g:ncm2_libclang#proc.try_notify(
+                    \   'cache_del',
+                    \   expand('%:p'))
+    endif
+
+    let b:ncm2_libclang_cache = 1
 endfunc
 
 func! ncm2_libclang#on_complete(ctx)

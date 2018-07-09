@@ -1,4 +1,4 @@
-#include "clang-c/Index.h"
+#include <unistd.h>
 
 #include <string>
 #include <vector>
@@ -6,6 +6,8 @@
 #include <map>
 #include <tuple>
 #include <iostream>
+
+#include "clang-c/Index.h"
 
 #include "json.hpp"
 
@@ -84,7 +86,7 @@ public:
                                       const vector<string> &args,
                                       int64_t lnum,
                                       int64_t bcol,
-                                      bool* cache_hit = nullptr)
+                                      bool *cache_hit = nullptr)
     {
         vector<const char *> vc_args;
         for (auto const &arg : args) {
@@ -182,8 +184,10 @@ struct CmdHandler
             json req = json::parse(line);
             string cmd = req["command"];
             json rsp;
-            if (cmd == "cache_file") {
-                rsp = cmd_cache_file(req);
+            if (cmd == "cache_add") {
+                rsp = cmd_cache_add(req);
+            } else if (cmd == "cache_del") {
+                rsp = cmd_cache_del(req);
             } else if (cmd == "code_completion") {
                 rsp = cmd_code_completion(req);
             } else {
@@ -195,55 +199,42 @@ struct CmdHandler
         }
     }
 
-    json cmd_cache_file(json req)
+    json cmd_cache_add(json req)
     {
-        json ctx = req["context"];
-        string fpath = ctx["filepath"];
-
+        string fpath = req["filepath"];
         const string &src = req["src"];
-        vector<string> args;
-        if (req["args"].is_array()) {
-            vector<string> tmp = req["args"];
-            args = tmp;
-        }
+        vector<string> args = req["args"];
+        string lang = req["lang"];
 
-        string scope = ctx["scope"];
-        string lang;
-        if (scope == "cpp") {
-            lang = "c++";
-        } else {
-            lang = "c";
-        }
+        string directory = req["directory"];
+        chdir(directory.c_str());
 
         libclang_->add_tu_cache(lang, fpath, src, args);
-
         return {};
     }
 
-    json cmd_code_completion(json req)
+    json cmd_cache_del(json req)
     {
-        json ctx = req["context"];
-        int64_t lnum = ctx["lnum"];
-        int64_t bcol = ctx["bcol"];
-        string fpath = ctx["filepath"];
+        string fpath = req["filepath"];
+        libclang_->remove_tu_cache(fpath);
+        return {};
+    }
 
+    json cmd_code_completion(const json &req)
+    {
+        int64_t lnum = req["lnum"];
+        int64_t bcol = req["bcol"];
+        string fpath = req["filepath"];
         const string &src = req["src"];
-        vector<string> args;
-        if (req["args"].is_array()) {
-            vector<string> tmp = req["args"];
-            args = tmp;
-        }
+        vector<string> args = req["args"];
+        string lang = req["lang"];
 
-        string scope = ctx["scope"];
-        string lang;
-        if (scope == "cpp") {
-            lang = "c++";
-        } else {
-            lang = "c";
-        }
+        string directory = req["directory"];
+        chdir(directory.c_str());
 
         bool cache_hit = false;
-        auto res = libclang_->complete_at(lang, fpath, src, args, lnum, bcol, &cache_hit);
+        auto res = libclang_->complete_at(
+            lang, fpath, src, args, lnum, bcol, &cache_hit);
 
         json matches = json::array();
         for (size_t i = 0; i < res->NumResults; ++i) {

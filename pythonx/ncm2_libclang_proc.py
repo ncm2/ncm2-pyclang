@@ -40,15 +40,14 @@ class Source(Ncm2Source):
         nvim.command(
             "call ncm2_libclang#on_warmup(ncm2#context())", async_=True)
 
-    def cache_file(self, ctx, lines, ctx2):
-        src = self.get_src("\n".join(lines), ctx)
+    def get_args_dir(self, ncm2_ctx, data):
+        filepath = ncm2_ctx['filepath']
 
-        filepath = ctx['filepath']
-
-        cwd = ctx2['cwd']
-        database_path = ctx2['database_path']
+        cwd = data['cwd']
+        database_path = data['database_path']
 
         args = []
+        run_dir = cwd
         cmake_args, directory = args_from_cmake(filepath, cwd, database_path)
         if cmake_args is not None:
             args = cmake_args
@@ -60,16 +59,30 @@ class Source(Ncm2Source):
                 args = clang_complete_args
                 run_dir = directory
 
+        return args, run_dir
+
+    def cache_add(self, ncm2_ctx, lines, data):
+        src = self.get_src("\n".join(lines), ncm2_ctx)
+
+        args, directory = self.get_args_dir(ncm2_ctx, data)
+
         start = time.time()
 
         req = {}
-        req["command"] = "cache_file"
-        req["context"] = ctx
-        req["args"] = cmake_args
-        req["src"] = src
+        req['command'] = 'cache_add'
+        req['filepath'] = ncm2_ctx['filepath']
+        req['args'] = args
+        req['directory'] = directory
+        req['src'] = src
+
+        if ncm2_ctx['filetype'] == 'cpp':
+            req['lang'] = 'c++'
+        else:
+            req['lang'] = 'c'
+
         req = json.dumps(req) + "\n"
 
-        logger.debug("req: %s", req)
+        logger.debug('req: %s', req)
 
         self.proc.stdin.write(req.encode())
         self.proc.stdin.flush()
@@ -81,34 +94,33 @@ class Source(Ncm2Source):
 
         logger.debug("cache_file time: %s, rsp: [%s]", end - start, rsp)
 
-    def on_complete(self, ctx, lines, ctx2):
-        src = self.get_src("\n".join(lines), ctx)
+    def on_complete(self, ncm2_ctx, lines, data):
+        src = self.get_src("\n".join(lines), ncm2_ctx)
 
-        startccol = ctx['startccol']
-        filepath = ctx['filepath']
+        filepath = ncm2_ctx['filepath']
+        startccol = ncm2_ctx['startccol']
 
-        cwd = ctx2['cwd']
-        database_path = ctx2['database_path']
+        cwd = data['cwd']
+        database_path = data['database_path']
 
-        args = []
-        cmake_args, directory = args_from_cmake(filepath, cwd, database_path)
-        if cmake_args is not None:
-            args = cmake_args
-            run_dir = directory
-        else:
-            clang_complete_args, directory = args_from_clang_complete(
-                filepath, cwd)
-            if clang_complete_args:
-                args = clang_complete_args
-                run_dir = directory
+        args, directory = self.get_args_dir(ncm2_ctx, data)
 
         start = time.time()
 
         req = {}
         req["command"] = "code_completion"
-        req["context"] = ctx
-        req["args"] = cmake_args
-        req["src"] = src
+        req['filepath'] = filepath
+        req['args'] = args
+        req['src'] = src
+        req['lnum'] = ncm2_ctx['lnum']
+        req['bcol'] = ncm2_ctx['bcol']
+        req['directory'] = directory
+
+        if ncm2_ctx['scope'] == 'cpp':
+            req['lang'] = 'c++'
+        else:
+            req['lang'] = 'c'
+
         req = json.dumps(req) + "\n"
 
         logger.debug("req: %s", req)
@@ -124,10 +136,10 @@ class Source(Ncm2Source):
         logger.debug("code_completion time: %s, rsp: [%s]", end - start, rsp)
 
         matches = rsp["matches"]
-        self.complete(ctx, startccol, matches)
+        self.complete(ncm2_ctx, startccol, matches)
 
 
 source = Source(vim)
 
 on_complete = source.on_complete
-cache_file = source.cache_file
+cache_add = source.cache_add
