@@ -1,5 +1,5 @@
 from ncm2 import getLogger
-from os.path import dirname, join, isfile, samefile, expanduser, expandvars
+from os.path import dirname, join, isfile, samefile, expanduser, expandvars, isabs
 from pathlib import Path
 import shlex
 import json
@@ -24,7 +24,7 @@ def _extract_args_from_cmake(cmd):
 def args_from_cmake(filepath, cwd, database_paths):
     filedir = dirname(filepath)
 
-    cfg_path = find_config([filedir, cwd], database_paths)
+    cfg_path, _ = find_config([filedir, cwd], database_paths)
 
     if not cfg_path:
         return None, None
@@ -68,10 +68,10 @@ def args_from_cmake(filepath, cwd, database_paths):
     return None, None
 
 
-def args_from_clang_complete(filepath, cwd):
+def args_from_clang_complete(filepath, cwd, args_file_path):
     filedir = dirname(filepath)
 
-    clang_complete = find_config([filedir, cwd], '.clang_complete')
+    clang_complete, directory = find_config([filedir, cwd], args_file_path)
 
     if not clang_complete:
         return None, None
@@ -81,7 +81,7 @@ def args_from_clang_complete(filepath, cwd):
             args = shlex.split(" ".join(f.readlines()))
             args = [expanduser(expandvars(p)) for p in args]
             logger.info('.clang_complete args: %s', args)
-            return args, dirname(clang_complete)
+            return args, directory
     except Exception as ex:
         logger.exception("read config file %s failed.", clang_complete)
 
@@ -103,6 +103,9 @@ def find_config(bases, names):
             for name in names:
                 p = join(d, name)
                 if isfile(p):
-                    return p
+                    if isabs(name):
+                        return p, dirname(name)
+                    else:
+                        return p, d
 
-    return None
+    return None, None

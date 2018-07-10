@@ -14,6 +14,10 @@ let g:ncm2_pyclang#database_path = get(g:,
             \   'build/compile_commands.json'
             \   ])
 
+let g:ncm2_pyclang#args_file_path = get(g:,
+            \ 'ncm2_pyclang#args_file_path',
+            \ ['.clang_complete'])
+
 let g:ncm2_pyclang#proc = yarp#py3('ncm2_pyclang_proc')
 
 let g:ncm2_pyclang#bin = get(g:, 'ncm2_pyclang#bin', "bin/ncm2_pyclang")
@@ -76,10 +80,11 @@ endfunc
 func! ncm2_pyclang#_data()
     return  {'cwd': getcwd(),
                 \ 'database_path': g:ncm2_pyclang#database_path,
+                \ 'args_file_path': g:ncm2_pyclang#args_file_path,
                 \ }
 endfunc
 
-func ncm2_pyclang#find_declaration()
+func! ncm2_pyclang#find_declaration()
     let pos = g:ncm2_pyclang#proc.call('find_declaration',
                 \ ncm2#context(),
                 \ ncm2_pyclang#_data(),
@@ -92,7 +97,7 @@ func ncm2_pyclang#find_declaration()
     return pos
 endfunc
 
-func ncm2_pyclang#goto_declaration()
+func! ncm2_pyclang#goto_declaration()
     let pos = ncm2_pyclang#find_declaration()
     if empty(pos)
         return
@@ -107,3 +112,8 @@ func ncm2_pyclang#goto_declaration()
     call cursor(pos.lnum, pos.bcol)
 endfunc
 
+func! ncm2_pyclang#get_args_dir()
+    return g:ncm2_pyclang#proc.call('get_args_dir',
+                \ ncm2#context(),
+                \ ncm2_pyclang#_data())
+endfunc

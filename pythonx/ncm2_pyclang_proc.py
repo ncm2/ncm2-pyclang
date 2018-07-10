@@ -43,6 +43,7 @@ class Source(Ncm2Source):
         cwd = data['cwd']
         database_path = data['database_path']
         filepath = ncm2_ctx['filepath']
+        args_file_path = data['args_file_path']
 
         args = []
 
@@ -60,7 +61,7 @@ class Source(Ncm2Source):
             run_dir = directory
         else:
             clang_complete_args, directory = args_from_clang_complete(
-                filepath, cwd)
+                filepath, cwd, args_file_path)
             if clang_complete_args:
                 args = clang_complete_args
                 run_dir = directory
@@ -309,3 +310,4 @@ on_complete = source.on_complete
 cache_add = source.cache_add
 find_declaration = source.find_declaration
 cache_del = source.cache_del
+get_args_dir = source.get_args_dir
