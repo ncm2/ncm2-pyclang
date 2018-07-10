@@ -1,5 +1,5 @@
 from ncm2 import getLogger
-from os.path import dirname, join, isfile, samefile, expanduser, expandvars, isabs
+from os.path import dirname, join, isfile, samefile, expanduser, expandvars
 from pathlib import Path
 import shlex
 import json
@@ -103,9 +103,6 @@ def find_config(bases, names):
             for name in names:
                 p = join(d, name)
                 if isfile(p):
-                    if isabs(name):
-                        return p, dirname(name)
-                    else:
-                        return p, d
+                    return p, d
 
     return None, None
