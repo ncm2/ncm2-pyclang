@@ -130,7 +130,6 @@ class Source(Ncm2Source):
         flags = cindex.TranslationUnit.PARSE_PRECOMPILED_PREAMBLE | \
             cindex.TranslationUnit.PARSE_DETAILED_PROCESSING_RECORD | \
             cindex.TranslationUnit.PARSE_CACHE_COMPLETION_RESULTS | \
-            cindex.TranslationUnit.PARSE_SKIP_FUNCTION_BODIES | \
             cindex.TranslationUnit.PARSE_INCOMPLETE | \
             CXTranslationUnit_KeepGoing
 
