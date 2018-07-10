@@ -149,6 +149,7 @@ class Source(Ncm2Source):
         startccol = ncm2_ctx['startccol']
         bcol = ncm2_ctx['bcol']
         lnum = ncm2_ctx['lnum']
+        base = ncm2_ctx['base']
 
         args, directory = self.get_args_dir(ncm2_ctx, data)
 
@@ -174,17 +175,22 @@ class Source(Ncm2Source):
 
         cr_end = time.time()
 
+        matcher = self.matcher_get(ncm2_ctx['matcher'])
+
         matches = []
         for res in results:
             item = self.format_complete_item(res)
             # filter it's kind of useless for completion
             if item['word'].startswith('operator '):
                 continue
+            item = self.match_formalize(ncm2_ctx, item)
+            if not matcher(base, item):
+                continue
             matches.append(item)
 
         end = time.time()
-        logger.debug("total code_completion time: %s, codeComplete time: %s",
-                     end - start, cr_end - start)
+        logger.debug("total time: %s, codeComplete time: %s, matches %s -> %s",
+                     end - start, cr_end - start, len(results), len(matches))
 
         self.complete(ncm2_ctx, startccol, matches)
 
@@ -296,6 +302,7 @@ class Source(Ncm2Source):
             ret['bcol'] = d_loc.column
             return ret
         return {}
+
 
 source = Source(vim)
 
