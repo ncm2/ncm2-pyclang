@@ -1,1 +1,1 @@
-call ncm2_libclang#init()
+call ncm2_pyclang#init()

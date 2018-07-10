@@ -139,7 +139,7 @@ private:
         // TODO compare with the clang_createTranslationUnitFromSourceFile
         // clang_createTranslationUnitFromSourceFile seems to be an old API
         // http://clang-developers.42468.n3.nabble.com/Diff-between-createTranslationUnit-and-parseTranslationUnit-td3581094.html
-        unsigned tu_flags = clang_defaultEditingTranslationUnitOptions();
+        // unsigned tu_flags = clang_defaultEditingTranslationUnitOptions();
         // auto tu = clang_createTranslationUnitFromSourceFile(idx_,
         //                                                     fpath.c_str(),
         //                                                     vc_args.size(),
@@ -147,10 +147,13 @@ private:
         //                                                     vc_unsavedf.size(),
         //                                                     vc_unsavedf.data());
 
-        tu_flags |= CXTranslationUnit_KeepGoing;
-        tu_flags |= CXTranslationUnit_CacheCompletionResults;
-        tu_flags |= CXTranslationUnit_SkipFunctionBodies;
-        tu_flags |= CXTranslationUnit_Incomplete;
+        // tu_flags |= CXTranslationUnit_KeepGoing;
+        // tu_flags |= CXTranslationUnit_CacheCompletionResults;
+        // tu_flags |= CXTranslationUnit_SkipFunctionBodies;
+        // tu_flags |= CXTranslationUnit_Incomplete;
+        unsigned tu_flags = CXTranslationUnit_DetailedPreprocessingRecord |
+                            CXTranslationUnit_PrecompiledPreamble;
+        // tu_flags |= CXTranslationUnit_CacheCompletionResults;
 
         auto tu = clang_parseTranslationUnit(idx_,
                                              fpath.c_str(),
