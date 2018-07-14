@@ -22,7 +22,7 @@ let g:ncm2_pyclang#proc = yarp#py3('ncm2_pyclang_proc')
 
 let g:ncm2_pyclang#bin = get(g:, 'ncm2_pyclang#bin', "bin/ncm2_pyclang")
 
-let g:ncm2_pyclang#source = get(g:, 'ncm2_pyclang#source', {
+let g:ncm2_pyclang#source = extend(get(g:, 'ncm2_pyclang#source', {}), {
             \ 'name': 'pyclang',
             \ 'scope': ['cpp', 'c'],
             \ 'priority': 9,
@@ -31,11 +31,7 @@ let g:ncm2_pyclang#source = get(g:, 'ncm2_pyclang#source', {
             \ 'on_complete': 'ncm2_pyclang#on_complete',
             \ 'on_warmup': 'ncm2_pyclang#on_warmup',
             \ 'complete_pattern': ['-\>', '::', '\.']
-            \ })
-
-let g:ncm2_pyclang#source = extend(g:ncm2_pyclang#source,
-            \ get(g:, 'ncm2_pyclang#source_override', {}),
-            \ 'force')
+            \ }, 'keep')
 
 func! ncm2_pyclang#init()
     call ncm2#register_source(g:ncm2_pyclang#source)
