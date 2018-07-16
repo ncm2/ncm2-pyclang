@@ -32,8 +32,12 @@ class Source(Ncm2Source):
 
         cindex.Config.set_compatibility_check(False)
 
-        self.index = cindex.Index.create(excludeDecls=False)
-        self.tu_cache = {}
+        self.cmpl_index = cindex.Index.create(excludeDecls=False)
+        self.goto_index = cindex.Index.create(excludeDecls=False)
+
+        self.cmpl_tu = {}
+        self.goto_tu = {}
+
         self.notify("ncm2_pyclang#_proc_started")
 
     def notify(self, method: str, *args):
@@ -71,73 +75,114 @@ class Source(Ncm2Source):
         return [args, run_dir]
 
     def cache_add(self, ncm2_ctx, data, lines):
+        self.do_cache_add(ncm2_ctx,
+                          data,
+                          lines,
+                          for_completion=True)
+        self.do_cache_add(ncm2_ctx,
+                          data,
+                          lines,
+                          for_completion=False)
+
+    def do_cache_add(self, ncm2_ctx, data, lines, for_completion=False):
         src = self.get_src("\n".join(lines), ncm2_ctx)
         filepath = ncm2_ctx['filepath']
         changedtick = ncm2_ctx['changedtick']
         args, directory = self.get_args_dir(ncm2_ctx, data)
         start = time.time()
 
+        if for_completion:
+            cache = self.cmpl_tu
+        else:
+            cache = self.goto_tu
+
         check = dict(args=args, directory=directory)
-        if filepath in self.tu_cache:
-            cache = self.tu_cache[filepath]
-            if check == cache['check']:
-                tu = cache['tu']
-                if changedtick == cache['changedtick']:
+        if filepath in cache:
+            item = cache[filepath]
+            if check == item['check']:
+                tu = item['tu']
+                if changedtick == item['changedtick']:
                     logger.info("changedtick is the same, skip reparse")
                     return
                 self.reparse_tu(tu, filepath, src)
                 logger.debug("cache_add reparse existing done")
                 return
-            del self.tu_cache[filepath]
+            del cache[filepath]
 
-        cache = {}
-        cache['check'] = check
-        cache['changedtick'] = changedtick
+        item = {}
+        item['check'] = check
+        item['changedtick'] = changedtick
 
         tu = self.create_tu(filepath, args, directory, src)
-        cache['tu'] = tu
+        item['tu'] = tu
 
-        self.tu_cache[filepath] = cache
-
-        # An explicit reparse speeds up the completion significantly. I
-        # don't know why
-        self.reparse_tu(tu, filepath, src)
+        cache[filepath] = item
 
         end = time.time()
-        logger.debug("cache_add done. time: %s", end - start)
+        logger.debug("cache_add done cmpl[%s]. time: %s",
+                     for_completion,
+                     end - start)
 
     def cache_del(self, filepath):
-        if filepath in self.tu_cache:
-            del self.tu_cache[filepath]
+        if filepath in self.cmpl_tu:
+            del self.cmpl_tu[filepath]
+        if filepath in self.goto_tu:
+            del self.goto_tu[filepath]
 
-    def get_tu(self, filepath, args, directory, src):
+    def get_tu(self, filepath, args, directory, src, for_completion=False):
+        if for_completion:
+            cache = self.cmpl_tu
+        else:
+            cache = self.goto_tu
+
         check = dict(args=args, directory=directory)
-        if filepath in self.tu_cache:
-            cache = self.tu_cache[filepath]
-            tu = cache['tu']
-            if check == cache['check']:
+        if filepath in cache:
+            item = cache[filepath]
+            tu = item['tu']
+            if check == item['check']:
                 logger.info("%s tu is cached", filepath)
                 self.reparse_tu(tu, filepath, src)
-                return cache['tu']
+                return item['tu']
             logger.info("%s tu invalidated by check %s -> %s",
-                        check, cache['check'])
+                        check, item['check'])
             self.cache_del(filepath)
+
         logger.info("cache miss")
-        return self.create_tu(filepath, args, directory, src)
 
-    def create_tu(self, filepath, args, directory, src):
+        return self.create_tu(filepath,
+                              args,
+                              directory,
+                              src,
+                              for_completion=for_completion)
+
+    def create_tu(self, filepath, args, directory, src, for_completion=False):
         CXTranslationUnit_KeepGoing = 0x200
+        CXTranslationUnit_CreatePreambleOnFirstParse = 0x100
 
-        flags = cindex.TranslationUnit.PARSE_PRECOMPILED_PREAMBLE | \
-            cindex.TranslationUnit.PARSE_DETAILED_PROCESSING_RECORD | \
-            cindex.TranslationUnit.PARSE_CACHE_COMPLETION_RESULTS | \
-            cindex.TranslationUnit.PARSE_INCOMPLETE | \
-            CXTranslationUnit_KeepGoing
+        if not for_completion:
+            flags = cindex.TranslationUnit.PARSE_PRECOMPILED_PREAMBLE | \
+                cindex.TranslationUnit.PARSE_INCOMPLETE | \
+                CXTranslationUnit_CreatePreambleOnFirstParse | \
+                cindex.TranslationUnit.PARSE_DETAILED_PROCESSING_RECORD | \
+                CXTranslationUnit_KeepGoing
+        else:
+            flags = cindex.TranslationUnit.PARSE_PRECOMPILED_PREAMBLE | \
+                cindex.TranslationUnit.PARSE_INCOMPLETE | \
+                CXTranslationUnit_CreatePreambleOnFirstParse | \
+                cindex.TranslationUnit.PARSE_CACHE_COMPLETION_RESULTS | \
+                cindex.TranslationUnit.PARSE_SKIP_FUNCTION_BODIES | \
+                CXTranslationUnit_KeepGoing
 
         logger.info("flags %s", flags)
 
         unsaved = (filepath, src)
-        return self.index.parse(filepath, args, [unsaved], flags)
+
+        if for_completion:
+            index = self.cmpl_index
+        else:
+            index = self.goto_index
+
+        return index.parse(filepath, args, [unsaved], flags)
 
     def reparse_tu(self, tu, filepath, src):
         unsaved = (filepath, src)
@@ -178,7 +223,9 @@ class Source(Ncm2Source):
 
         matches = []
         for res in results:
-            item = self.format_complete_item(res)
+            item = self.format_complete_item(ncm2_ctx, matcher, base, res)
+            if item is None:
+                continue
             # filter it's kind of useless for completion
             if item['word'].startswith('operator '):
                 continue
@@ -193,11 +240,11 @@ class Source(Ncm2Source):
 
         self.complete(ncm2_ctx, startccol, matches)
 
-    def format_complete_item(self, result: CodeCompletionResult):
+    def format_complete_item(self, ncm2_ctx, matcher, base, result: CodeCompletionResult):
         result_type = None
-        word = ""
-        snippet = ""
-        info = ""
+        word = ''
+        snippet = ''
+        info = ''
 
         def roll_out_optional(chunks: CompletionString):
             result = []
@@ -218,6 +265,13 @@ class Source(Ncm2Source):
 
         for chunk in result.string:
 
+            if chunk.isKindTypedText():
+                # filter the matches earlier for performance
+                tmp = self.match_formalize(ncm2_ctx, chunk.spelling)
+                if not matcher(base, tmp):
+                    return None
+                word = chunk.spelling
+
             if chunk.isKindInformative():
                 continue
 
@@ -226,8 +280,6 @@ class Source(Ncm2Source):
                 continue
 
             chunk_text = chunk.spelling
-            if chunk.isKindTypedText():
-                word = chunk_text
 
             if chunk.isKindOptional():
                 for arg in roll_out_optional(chunk.string):
