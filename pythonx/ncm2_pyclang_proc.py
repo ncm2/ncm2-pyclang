@@ -163,14 +163,13 @@ class Source(Ncm2Source):
 
         tu = self.get_tu(filepath, args, directory, src)
 
-        CXCodeComplete_IncludeMacros = 0x01
-        CXCodeComplete_IncludeCodePatterns = 0x02
-
-        cmpl_flags = CXCodeComplete_IncludeMacros | \
-            CXCodeComplete_IncludeCodePatterns
-
         unsaved = [filepath, src]
-        cr = tu.codeComplete(filepath, lnum, bcol, [unsaved], cmpl_flags)
+        cr = tu.codeComplete(filepath,
+                             lnum,
+                             bcol,
+                             [unsaved],
+                             include_macros=True,
+                             include_code_patterns=True)
         results = cr.results
 
         cr_end = time.time()
