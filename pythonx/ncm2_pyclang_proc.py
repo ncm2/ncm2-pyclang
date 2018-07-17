@@ -113,7 +113,7 @@ class Source(Ncm2Source):
         item['check'] = check
         item['changedtick'] = changedtick
 
-        tu = self.create_tu(filepath, args, directory, src)
+        tu = self.create_tu(filepath, args, directory, src, for_completion=for_completion)
         item['tu'] = tu
 
         cache[filepath] = item
@@ -155,7 +155,7 @@ class Source(Ncm2Source):
                               src,
                               for_completion=for_completion)
 
-    def create_tu(self, filepath, args, directory, src, for_completion=False):
+    def create_tu(self, filepath, args, directory, src, for_completion):
         CXTranslationUnit_KeepGoing = 0x200
         CXTranslationUnit_CreatePreambleOnFirstParse = 0x100
 
