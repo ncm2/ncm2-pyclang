@@ -23,11 +23,13 @@ let g:ncm2_pyclang#args_file_path = get(g:,
             \ ['.clang_complete'])
 
 let g:ncm2_pyclang#proc = yarp#py3('ncm2_pyclang_proc')
+let g:ncm2_pyclang#proc.on_load = {-> ncm2#set_ready(g:ncm2_pyclang#source)}
 
 let g:ncm2_pyclang#bin = get(g:, 'ncm2_pyclang#bin', "bin/ncm2_pyclang")
 
 let g:ncm2_pyclang#source = extend(get(g:, 'ncm2_pyclang#source', {}), {
             \ 'name': 'pyclang',
+            \ 'ready': 0,
             \ 'scope': ['cpp', 'c'],
             \ 'priority': 9,
             \ 'mark': 'cxx',
