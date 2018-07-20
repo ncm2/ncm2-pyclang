@@ -126,8 +126,10 @@ class Source(Ncm2Source):
     def cache_del(self, filepath):
         if filepath in self.cmpl_tu:
             del self.cmpl_tu[filepath]
+            logger.info('completion cache %s has been removed', filepath)
         if filepath in self.goto_tu:
             del self.goto_tu[filepath]
+            logger.info('goto cache %s has been removed', filepath)
 
     def get_tu(self, filepath, args, directory, src, for_completion=False):
         if for_completion:
