@@ -4,10 +4,11 @@ from ncm2 import Ncm2Source, getLogger, Popen
 import subprocess
 import re
 from os.path import dirname
-from os import path
+from os import path, scandir
 import vim
 import json
 import time
+import shlex
 
 import sys
 sys.path.insert(0, path.join(dirname(__file__), '3rd'))
@@ -38,6 +39,8 @@ class Source(Ncm2Source):
         self.cmpl_tu = {}
         self.goto_tu = {}
 
+        self.clang_path = nvim.vars['ncm2_pyclang#clang_path']
+
         self.notify("ncm2_pyclang#_proc_started")
 
     def notify(self, method: str, *args):
@@ -51,13 +54,6 @@ class Source(Ncm2Source):
 
         args = []
 
-        if 'scope' in ncm2_ctx and ncm2_ctx['scope'] == 'cpp':
-            args.append('-xc++')
-        elif ncm2_ctx['filetype'] == 'cpp':
-            args.append('-xc++')
-        else:
-            args.append('-xc')
-
         run_dir = cwd
         cmake_args, directory = args_from_cmake(filepath, cwd, database_path)
         if cmake_args is not None:
@@ -70,7 +66,12 @@ class Source(Ncm2Source):
                 args = clang_complete_args
                 run_dir = directory
 
-        args.insert(0, '-working-directory=' + run_dir)
+        if 'scope' in ncm2_ctx and ncm2_ctx['scope'] == 'cpp':
+            args.append('-xc++')
+        elif ncm2_ctx['filetype'] == 'cpp':
+            args.append('-xc++')
+        else:
+            args.append('-xc')
 
         return [args, run_dir]
 
@@ -113,7 +114,8 @@ class Source(Ncm2Source):
         item['check'] = check
         item['changedtick'] = changedtick
 
-        tu = self.create_tu(filepath, args, directory, src, for_completion=for_completion)
+        tu = self.create_tu(filepath, args, directory, src,
+                            for_completion=for_completion)
         item['tu'] = tu
 
         cache[filepath] = item
@@ -155,7 +157,43 @@ class Source(Ncm2Source):
                               src,
                               for_completion=for_completion)
 
+    def args_to_clang_cc1(self, args, directory):
+        # Translate to clang args
+        # clang-5.0 -### -x c++  -c -
+        cmd = [self.clang_path, '-###'] + args + ['-']
+        logger.debug('to clang cc1 cmd: %s', cmd)
+
+        proc = Popen(args=cmd,
+                     stdin=subprocess.PIPE,
+                     stdout=subprocess.PIPE,
+                     stderr=subprocess.PIPE)
+
+        outdata, errdata = proc.communicate('', timeout=2)
+        logger.debug('outdata: %s, errdata: %s', outdata, errdata)
+        if proc.returncode != 0:
+            return None
+
+        errdata = errdata.decode()
+
+        lines = errdata.splitlines()
+        installed_dir_found = False
+        for line in lines:
+            if not installed_dir_found:
+                if line.startswith('InstalledDir:'):
+                    installed_dir_found = True
+                continue
+            args = shlex.split(line)
+            # remove clang binary and the last '-', insert working directory
+            # after -cc1
+            args = args[1:-1]
+            args.insert(1, '-working-directory=' + directory)
+            logger.debug('-cc1 args: %s', args)
+            return args
+
+        return None
+
     def create_tu(self, filepath, args, directory, src, for_completion):
+
         CXTranslationUnit_KeepGoing = 0x200
         CXTranslationUnit_CreatePreambleOnFirstParse = 0x100
 
@@ -188,6 +226,54 @@ class Source(Ncm2Source):
         unsaved = (filepath, src)
         tu.reparse([unsaved])
 
+    include_pat = re.compile(r'^\s*#include\s+["<]')
+
+    def get_include_completions(self, ncm2_ctx, args, directory):
+        base = ncm2_ctx['base']
+        cc1 = self.args_to_clang_cc1(args, directory)
+        if cc1:
+            args = cc1
+
+        includes = []
+        next_is_include = False
+        for arg in args:
+            if not next_is_include:
+                if arg == '-I':
+                    next_is_include = True
+                elif arg.startswith('-I'):
+                    includes.append(arg[start:])
+                if arg == '-internal-isystem':
+                    next_is_include = True
+                elif arg.startswith('-internal-isystem'):
+                    start = len('-internal-isystem')
+                    includes.append(arg[start:])
+                else:
+                    continue
+                continue
+            includes.append(arg)
+            next_is_include = False
+
+        includes = [path.normpath(path.join(directory, inc)) for inc in includes]
+        includes = list(set(includes))
+
+        matches = []
+        matcher = self.matcher_get(ncm2_ctx['matcher'])
+
+        for inc in includes:
+            try:
+                for entry in scandir(inc):
+                    name = entry.name
+                    if entry.is_file():
+                        name += '/'
+                    match = self.match_formalize(ncm2_ctx, name)
+                    match['menu'] = inc
+                    if not matcher(base, match):
+                        continue
+                    matches.append(match)
+            except:
+                logger.exception('scandir failed for %s', inc)
+        return matches
+
     def on_complete(self, ncm2_ctx, data, lines):
         src = self.get_src("\n".join(lines), ncm2_ctx)
         filepath = ncm2_ctx['filepath']
@@ -195,16 +281,16 @@ class Source(Ncm2Source):
         bcol = ncm2_ctx['bcol']
         lnum = ncm2_ctx['lnum']
         base = ncm2_ctx['base']
+        typed = ncm2_ctx['typed']
 
         args, directory = self.get_args_dir(ncm2_ctx, data)
 
-        start = time.time()
+        if self.include_pat.search(typed):
+            matches = self.get_include_completions(ncm2_ctx, args, directory)
+            self.complete(ncm2_ctx, startccol, matches)
+            return
 
-        if ncm2_ctx['scope'] != ncm2_ctx['filetype']:
-            if ncm2_ctx['scope'] == 'cpp':
-                filepath += '.cpp'
-            else:
-                filepath += '.c'
+        start = time.time()
 
         tu = self.get_tu(filepath, args, directory, src)
 

@@ -7,6 +7,10 @@ let g:ncm2_pyclang#library_path = get(g:,
             \ 'ncm2_pyclang#library_path',
             \ '')
 
+let g:ncm2_pyclang#clang_path = get(g:,
+            \ 'ncm2_pyclang#clang_path',
+            \ 'clang')
+
 let g:ncm2_pyclang#database_path = get(g:,
             \ 'ncm2_pyclang#database_path',
             \ [
