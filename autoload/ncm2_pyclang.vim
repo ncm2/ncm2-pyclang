@@ -34,7 +34,12 @@ let g:ncm2_pyclang#source = extend(get(g:, 'ncm2_pyclang#source', {}), {
             \ 'subscope_enable': 1,
             \ 'on_complete': 'ncm2_pyclang#on_complete',
             \ 'on_warmup': 'ncm2_pyclang#on_warmup',
-            \ 'complete_pattern': ['-\>', '::', '\.', '^\s*#']
+            \ 'complete_pattern': [
+            \       '-\>',
+            \       '::',
+            \       '\.',
+            \       '^\s*#',
+            \       '^\s*#include.*["</]']
             \ }, 'keep')
 
 func! ncm2_pyclang#init()

@@ -224,11 +224,10 @@ class Source(Ncm2Source):
         unsaved = (filepath, src)
         tu.reparse([unsaved])
 
-    include_pat = re.compile(r'^\s*#include\s+["<]')
+    include_pat = re.compile(r'^\s*#include\s+["<]([^"<]*)$')
 
-    def get_include_completions(self, data, args, directory):
+    def get_include_completions(self, data, args, directory, inc_typed):
         context = data['context']
-        base = context['base']
         cc1 = self.args_to_clang_cc1(data, args, directory)
         if cc1:
             args = cc1
@@ -259,12 +258,16 @@ class Source(Ncm2Source):
         matches = []
         matcher = self.matcher_get(context['matcher'])
 
+        sub_dir = dirname(inc_typed)  # type: str
+        sub_dir = sub_dir.strip('/')
+        base = re.search('([^/"<]*)$', inc_typed).group(1)
+
         for inc in includes:
             try:
-                for entry in scandir(inc):
+                for entry in scandir(path.join(inc, sub_dir)):
                     name = entry.name
-                    if entry.is_dir():
-                        name += '/'
+                    # if entry.is_dir():
+                    #     name += '/'
                     match = self.match_formalize(context, name)
                     match['menu'] = inc
                     if not matcher(base, match):
@@ -272,7 +275,9 @@ class Source(Ncm2Source):
                     matches.append(match)
             except:
                 logger.exception('scandir failed for %s', inc)
-        return matches
+
+        startccol = context['ccol'] - len(base)
+        self.complete(context, startccol, matches)
 
     def on_complete(self, context, data, lines):
         data['context'] = context
@@ -286,9 +291,12 @@ class Source(Ncm2Source):
 
         args, directory = self.get_args_dir(data)
 
-        if self.include_pat.search(typed):
-            matches = self.get_include_completions(data, args, directory)
-            self.complete(context, startccol, matches)
+        inc_match = self.include_pat.search(typed)
+        if inc_match:
+            matches = self.get_include_completions(data,
+                                                   args,
+                                                   directory,
+                                                   inc_match.group(1))
             return
 
         start = time.time()
