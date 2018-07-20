@@ -39,17 +39,16 @@ class Source(Ncm2Source):
         self.cmpl_tu = {}
         self.goto_tu = {}
 
-        self.clang_path = nvim.vars['ncm2_pyclang#clang_path']
-
         self.notify("ncm2_pyclang#_proc_started")
 
     def notify(self, method: str, *args):
         self.nvim.call(method, *args, async_=True)
 
-    def get_args_dir(self, ncm2_ctx, data):
+    def get_args_dir(self, data):
+        context = data['context']
         cwd = data['cwd']
         database_path = data['database_path']
-        filepath = ncm2_ctx['filepath']
+        filepath = context['filepath']
         args_file_path = data['args_file_path']
 
         args = []
@@ -66,30 +65,29 @@ class Source(Ncm2Source):
                 args = clang_complete_args
                 run_dir = directory
 
-        if 'scope' in ncm2_ctx and ncm2_ctx['scope'] == 'cpp':
+        if context['scope'] == 'cpp':
             args.append('-xc++')
-        elif ncm2_ctx['filetype'] == 'cpp':
+        elif context['filetype'] == 'cpp':
             args.append('-xc++')
         else:
             args.append('-xc')
 
         return [args, run_dir]
 
-    def cache_add(self, ncm2_ctx, data, lines):
-        self.do_cache_add(ncm2_ctx,
-                          data,
+    def cache_add(self, data, lines):
+        self.do_cache_add(data,
                           lines,
-                          for_completion=True)
-        self.do_cache_add(ncm2_ctx,
-                          data,
+                          True)
+        self.do_cache_add(data,
                           lines,
-                          for_completion=False)
+                          False)
 
-    def do_cache_add(self, ncm2_ctx, data, lines, for_completion=False):
-        src = self.get_src("\n".join(lines), ncm2_ctx)
-        filepath = ncm2_ctx['filepath']
-        changedtick = ncm2_ctx['changedtick']
-        args, directory = self.get_args_dir(ncm2_ctx, data)
+    def do_cache_add(self, data, lines, for_completion):
+        context = data['context']
+        src = self.get_src("\n".join(lines), context)
+        filepath = context['filepath']
+        changedtick = context['changedtick']
+        args, directory = self.get_args_dir(data)
         start = time.time()
 
         if for_completion:
@@ -157,10 +155,10 @@ class Source(Ncm2Source):
                               src,
                               for_completion=for_completion)
 
-    def args_to_clang_cc1(self, args, directory):
+    def args_to_clang_cc1(self, data, args, directory):
         # Translate to clang args
         # clang-5.0 -### -x c++  -c -
-        cmd = [self.clang_path, '-###'] + args + ['-']
+        cmd = [data['clang_path'], '-###'] + args + ['-']
         logger.debug('to clang cc1 cmd: %s', cmd)
 
         proc = Popen(args=cmd,
@@ -228,9 +226,10 @@ class Source(Ncm2Source):
 
     include_pat = re.compile(r'^\s*#include\s+["<]')
 
-    def get_include_completions(self, ncm2_ctx, args, directory):
-        base = ncm2_ctx['base']
-        cc1 = self.args_to_clang_cc1(args, directory)
+    def get_include_completions(self, data, args, directory):
+        context = data['context']
+        base = context['base']
+        cc1 = self.args_to_clang_cc1(data, args, directory)
         if cc1:
             args = cc1
 
@@ -253,19 +252,20 @@ class Source(Ncm2Source):
             includes.append(arg)
             next_is_include = False
 
-        includes = [path.normpath(path.join(directory, inc)) for inc in includes]
+        includes = [path.normpath(path.join(directory, inc))
+                    for inc in includes]
         includes = list(set(includes))
 
         matches = []
-        matcher = self.matcher_get(ncm2_ctx['matcher'])
+        matcher = self.matcher_get(context['matcher'])
 
         for inc in includes:
             try:
                 for entry in scandir(inc):
                     name = entry.name
-                    if entry.is_file():
+                    if entry.is_dir():
                         name += '/'
-                    match = self.match_formalize(ncm2_ctx, name)
+                    match = self.match_formalize(context, name)
                     match['menu'] = inc
                     if not matcher(base, match):
                         continue
@@ -274,20 +274,21 @@ class Source(Ncm2Source):
                 logger.exception('scandir failed for %s', inc)
         return matches
 
-    def on_complete(self, ncm2_ctx, data, lines):
-        src = self.get_src("\n".join(lines), ncm2_ctx)
-        filepath = ncm2_ctx['filepath']
-        startccol = ncm2_ctx['startccol']
-        bcol = ncm2_ctx['bcol']
-        lnum = ncm2_ctx['lnum']
-        base = ncm2_ctx['base']
-        typed = ncm2_ctx['typed']
+    def on_complete(self, context, data, lines):
+        data['context'] = context
+        src = self.get_src("\n".join(lines), context)
+        filepath = context['filepath']
+        startccol = context['startccol']
+        bcol = context['bcol']
+        lnum = context['lnum']
+        base = context['base']
+        typed = context['typed']
 
-        args, directory = self.get_args_dir(ncm2_ctx, data)
+        args, directory = self.get_args_dir(data)
 
         if self.include_pat.search(typed):
-            matches = self.get_include_completions(ncm2_ctx, args, directory)
-            self.complete(ncm2_ctx, startccol, matches)
+            matches = self.get_include_completions(data, args, directory)
+            self.complete(context, startccol, matches)
             return
 
         start = time.time()
@@ -305,17 +306,17 @@ class Source(Ncm2Source):
 
         cr_end = time.time()
 
-        matcher = self.matcher_get(ncm2_ctx['matcher'])
+        matcher = self.matcher_get(context['matcher'])
 
         matches = []
         for res in results:
-            item = self.format_complete_item(ncm2_ctx, matcher, base, res)
+            item = self.format_complete_item(context, matcher, base, res)
             if item is None:
                 continue
             # filter it's kind of useless for completion
             if item['word'].startswith('operator '):
                 continue
-            item = self.match_formalize(ncm2_ctx, item)
+            item = self.match_formalize(context, item)
             if not matcher(base, item):
                 continue
             matches.append(item)
@@ -324,9 +325,9 @@ class Source(Ncm2Source):
         logger.debug("total time: %s, codeComplete time: %s, matches %s -> %s",
                      end - start, cr_end - start, len(results), len(matches))
 
-        self.complete(ncm2_ctx, startccol, matches)
+        self.complete(context, startccol, matches)
 
-    def format_complete_item(self, ncm2_ctx, matcher, base, result: CodeCompletionResult):
+    def format_complete_item(self, context, matcher, base, result):
         result_type = None
         word = ''
         snippet = ''
@@ -353,7 +354,7 @@ class Source(Ncm2Source):
 
             if chunk.isKindTypedText():
                 # filter the matches earlier for performance
-                tmp = self.match_formalize(ncm2_ctx, chunk.spelling)
+                tmp = self.match_formalize(context, chunk.spelling)
                 if not matcher(base, tmp):
                     return None
                 word = chunk.spelling
@@ -408,13 +409,14 @@ class Source(Ncm2Source):
             return '${%s}' % num
         return '${%s:%s}' % (num, txt)
 
-    def find_declaration(self, ncm2_ctx, data, lines):
-        src = self.get_src("\n".join(lines), ncm2_ctx)
-        filepath = ncm2_ctx['filepath']
-        bcol = ncm2_ctx['bcol']
-        lnum = ncm2_ctx['lnum']
+    def find_declaration(self, data, lines):
+        context = data['context']
+        src = self.get_src("\n".join(lines), context)
+        filepath = context['filepath']
+        bcol = context['bcol']
+        lnum = context['lnum']
 
-        args, directory = self.get_args_dir(ncm2_ctx, data)
+        args, directory = self.get_args_dir(data)
 
         tu = self.get_tu(filepath, args, directory, src)
 

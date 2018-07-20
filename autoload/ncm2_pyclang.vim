@@ -56,8 +56,7 @@ func! ncm2_pyclang#on_warmup(ctx)
     endif
 
     call g:ncm2_pyclang#proc.try_notify('cache_add',
-                \ a:ctx,
-                \ ncm2_pyclang#_data(),
+                \ s:data(a:ctx),
                 \ getline(1, '$'))
 
     if get(b:, 'b:ncm2_pyclang_cache') == 0
@@ -73,21 +72,13 @@ endfunc
 func! ncm2_pyclang#on_complete(ctx)
     call g:ncm2_pyclang#proc.try_notify('on_complete',
                 \ a:ctx,
-                \ ncm2_pyclang#_data(),
+                \ s:data({}),
                 \ getline(1, '$'))
-endfunc
-
-func! ncm2_pyclang#_data()
-    return  {'cwd': getcwd(),
-                \ 'database_path': g:ncm2_pyclang#database_path,
-                \ 'args_file_path': g:ncm2_pyclang#args_file_path,
-                \ }
 endfunc
 
 func! ncm2_pyclang#find_declaration()
     let pos = g:ncm2_pyclang#proc.call('find_declaration',
-                \ ncm2#context(g:ncm2_pyclang#source),
-                \ ncm2_pyclang#_data(),
+                \ s:data(ncm2#context(g:ncm2_pyclang#source)),
                 \ getline(1, '$'))
     if empty(pos)
         echohl ErrorMsg
@@ -114,6 +105,15 @@ endfunc
 
 func! ncm2_pyclang#get_args_dir()
     return g:ncm2_pyclang#proc.call('get_args_dir',
-                \ ncm2#context(),
-                \ ncm2_pyclang#_data())
+                \ s:data(ncm2#context(g:ncm2_pyclang#source)))
 endfunc
+
+func! s:data(context)
+    return  {'cwd': getcwd(),
+                \ 'database_path': g:ncm2_pyclang#database_path,
+                \ 'args_file_path': g:ncm2_pyclang#args_file_path,
+                \ 'context': a:context,
+                \ 'clang_path': g:ncm2_pyclang#clang_path,
+                \ }
+endfunc
+
