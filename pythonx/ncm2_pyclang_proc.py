@@ -218,13 +218,15 @@ class Source(Ncm2Source):
         else:
             index = self.goto_index
 
-        return index.parse(filepath, args, [unsaved], flags)
+        tu = index.parse(filepath, args, [unsaved], flags)
+        return tu
 
     def reparse_tu(self, tu, filepath, src):
         unsaved = (filepath, src)
         tu.reparse([unsaved])
 
     include_pat = re.compile(r'^\s*#include\s+["<]([^"<]*)$')
+    include_base_pat = re.compile(r'([^/"<]*)$')
 
     def get_include_completions(self, data, args, directory, inc_typed):
         context = data['context']
@@ -260,16 +262,16 @@ class Source(Ncm2Source):
 
         sub_dir = dirname(inc_typed)  # type: str
         sub_dir = sub_dir.strip('/')
-        base = re.search('([^/"<]*)$', inc_typed).group(1)
+        base = self.include_base_pat.search(inc_typed).group(1)
 
         for inc in includes:
             try:
                 for entry in scandir(path.join(inc, sub_dir)):
                     name = entry.name
-                    # if entry.is_dir():
-                    #     name += '/'
                     match = self.match_formalize(context, name)
-                    match['menu'] = inc
+                    match['menu'] = path.join(inc, sub_dir, name)
+                    if entry.is_dir():
+                        match['menu'] += '/'
                     if not matcher(base, match):
                         continue
                     matches.append(match)
