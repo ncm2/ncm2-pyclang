@@ -113,6 +113,10 @@ func! ncm2_pyclang#get_args_dir()
                 \ s:data(ncm2#context(g:ncm2_pyclang#source)))
 endfunc
 
+func! ncm2_pyclang#error(msg)
+    call g:ncm2_pyclang#proc.error(a:msg)
+endfunc
+
 func! s:data(context)
     return  {'cwd': getcwd(),
                 \ 'database_path': g:ncm2_pyclang#database_path,

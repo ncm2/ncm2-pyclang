@@ -15,7 +15,7 @@ sys.path.insert(0, path.join(dirname(__file__), '3rd'))
 
 from ncm2_pyclang import args_from_cmake, args_from_clang_complete
 from clang import cindex
-from clang.cindex import CodeCompletionResult, CompletionString, SourceLocation, Cursor, File
+from clang.cindex import CodeCompletionResult, CompletionString, SourceLocation, Cursor, File, Diagnostic
 
 logger = getLogger(__name__)
 
@@ -450,6 +450,15 @@ class Source(Ncm2Source):
             ret['lnum'] = d_loc.line
             ret['bcol'] = d_loc.column
             return ret
+
+        # we failed finding the declaration, maybe there's some syntax error
+        # stopping us. Report it to the user.
+        logger.info('reading Diagnostic for this tu, args: %s', args)
+        for diag in tu.diagnostics:
+            # type: Diagnostic
+            if diag.severity < diag.Error:
+                pass
+            self.nvim.call('ncm2_pyclang#error', diag.format())
         return {}
 
 
