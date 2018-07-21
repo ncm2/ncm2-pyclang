@@ -38,7 +38,7 @@ func! ncm2_pyclang#init()
 endfunc
 
 func! ncm2_pyclang#_proc_started()
-    call ncm2_pyclang#on_warmup(ncm2#context())
+    call ncm2_pyclang#on_warmup(ncm2#context(g:ncm2_pyclang#source))
 endfunc
 
 func! ncm2_pyclang#on_warmup(ctx)
@@ -82,7 +82,7 @@ endfunc
 
 func! ncm2_pyclang#find_declaration()
     let pos = g:ncm2_pyclang#proc.call('find_declaration',
-                \ ncm2#context(),
+                \ ncm2#context(g:ncm2_pyclang#source),
                 \ ncm2_pyclang#_data(),
                 \ getline(1, '$'))
     if empty(pos)
