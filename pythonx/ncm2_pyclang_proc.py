@@ -238,19 +238,17 @@ class Source(Ncm2Source):
 
         includes = []
         next_is_include = False
+        opts = ['-I', '-internal-system', '-internal-externc-isystem']
         for arg in args:
             if not next_is_include:
-                if arg == '-I':
+                if arg in opts:
                     next_is_include = True
-                elif arg.startswith('-I'):
-                    includes.append(arg[start:])
-                if arg == '-internal-isystem':
-                    next_is_include = True
-                elif arg.startswith('-internal-isystem'):
-                    start = len('-internal-isystem')
-                    includes.append(arg[start:])
-                else:
                     continue
+                for opt in opts:
+                    if arg.startswith(opt):
+                        start = len(opt)
+                        includes.append(arg[start:])
+                        break
                 continue
             includes.append(arg)
             next_is_include = False
