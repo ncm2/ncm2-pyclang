@@ -238,7 +238,7 @@ class Source(Ncm2Source):
 
         includes = []
         next_is_include = False
-        opts = ['-I', '-internal-system', '-internal-externc-isystem']
+        opts = ['-I', '-isystem', '-internal-isystem', '-internal-externc-isystem']
         for arg in args:
             if not next_is_include:
                 if arg in opts:
@@ -247,6 +247,8 @@ class Source(Ncm2Source):
                 for opt in opts:
                     if arg.startswith(opt):
                         start = len(opt)
+                        if start > 2:
+                            start += 1
                         includes.append(arg[start:])
                         break
                 continue
@@ -256,6 +258,8 @@ class Source(Ncm2Source):
         includes = [path.normpath(path.join(directory, inc))
                     for inc in includes]
         includes = list(set(includes))
+
+        logger.debug("includes to search: %s", includes)
 
         matches = []
         matcher = self.matcher_get(context['matcher'])
