@@ -257,6 +257,12 @@ class Source(Ncm2Source):
 
         includes = [path.normpath(path.join(directory, inc))
                     for inc in includes]
+
+        # current file path
+        if context['filepath']:
+            includes.append(dirname(context['filepath']))
+
+        # remove duplicate
         includes = list(set(includes))
 
         logger.debug("includes to search: %s", includes)
