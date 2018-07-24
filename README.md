@@ -11,7 +11,8 @@ binding](https://github.com/llvm-mirror/clang). Inspired by
 
 ### `g:ncm2_pyclang#library_path`
 
-Use `g:ncm2_pyclang#library_path` to specify the directory of libclang library or the file itself, e.g., for Linux:
+Use `g:ncm2_pyclang#library_path` to specify the directory of libclang library
+or the file itself, e.g., for Linux:
 
 ```vim
 " path to directory where libclang.so can be found
@@ -23,13 +24,18 @@ let g:ncm2_pyclang#library_path = '/usr/lib64/libclang.so.5.0'
 
 Notes:
 
-- Different operating systems normally have their own extensions for the libclang file.
+- Different operating systems normally have their own extensions for the
+  libclang file.
 
     - Linux: libclang.so
     - macOS: libclang.dylib
     - Windows: libclang.dll
 
-- Sometimes ncm2-pyclang still works even you don't set `g:ncm2_pyclang#library_path`, that's because another libclang is found, which is probably the system libclang. The system libclang is often a bit old and is not guranteed to always be found, so I highly recommend set `g:ncm_clang#library_path` explicitly.
+- Sometimes ncm2-pyclang still works even you don't set
+  `g:ncm2_pyclang#library_path`, that's because another libclang is found,
+  which is probably the system libclang. The system libclang is often a bit
+  old and is not guranteed to always be found, so I highly recommend set
+  `g:ncm_clang#library_path` explicitly.
 
 ### `g:ncm2_pyclang#database_path `
 
@@ -57,6 +63,12 @@ something like:
 " a list of relative paths looking for .clang_complete
 let g:ncm2_pyclang#args_file_path = ['.clang_complete']
 ```
+
+### `g:ncm2_pyclang#clang_path`
+
+This option defaults to `clang`. `clang` is invoded with `clang -###` to find
+all the include directories used by clang, so that this plugin could provide
+accurate include completion.
 
 ### Goto Declaration
 
