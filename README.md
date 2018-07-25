@@ -66,7 +66,7 @@ let g:ncm2_pyclang#args_file_path = ['.clang_complete']
 
 ### `g:ncm2_pyclang#clang_path`
 
-This option defaults to `clang`. `clang` is invoded with `clang -###` to find
+This option defaults to `clang`. `clang` is invoked with `clang -###` to find
 all the include directories used by clang, so that this plugin could provide
 accurate include completion.
 
