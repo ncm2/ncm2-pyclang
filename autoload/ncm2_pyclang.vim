@@ -41,7 +41,7 @@ let g:ncm2_pyclang#source = extend(get(g:, 'ncm2_pyclang#source', {}), {
             \       '::',
             \       '\.',
             \       '^\s*#',
-            \       '^\s*#include.*["</]']
+            \       '^\s*#include.*/']
             \ }, 'keep')
 
 func! ncm2_pyclang#init()
