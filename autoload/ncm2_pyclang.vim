@@ -22,8 +22,9 @@ let g:ncm2_pyclang#args_file_path = get(g:,
             \ 'ncm2_pyclang#args_file_path',
             \ ['.clang_complete'])
 
-let g:ncm2_pyclang#proc = yarp#py3('ncm2_pyclang_proc')
-let g:ncm2_pyclang#proc.on_load = {-> ncm2#set_ready(g:ncm2_pyclang#source)}
+let g:ncm2_pyclang#proc = yarp#py3({'module': 'ncm2_pyclang_proc',
+            \ 'job_detach': 1,
+            \ 'on_load': {-> ncm2#set_ready(g:ncm2_pyclang#source)}})
 
 let g:ncm2_pyclang#bin = get(g:, 'ncm2_pyclang#bin', "bin/ncm2_pyclang")
 
