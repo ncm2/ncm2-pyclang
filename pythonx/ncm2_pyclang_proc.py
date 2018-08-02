@@ -9,6 +9,8 @@ import vim
 import json
 import shlex
 import time
+import threading
+import queue
 
 import sys
 sys.path.insert(0, path.join(dirname(__file__), '3rd'))
@@ -18,6 +20,10 @@ from clang import cindex
 from clang.cindex import CodeCompletionResult, CompletionString, SourceLocation, Cursor, File, Diagnostic
 
 logger = getLogger(__name__)
+
+
+class ErrTaskCancel(Exception):
+    pass
 
 
 class Source(Ncm2Source):
@@ -39,12 +45,41 @@ class Source(Ncm2Source):
         self.cmpl_tu = {}
         self.goto_tu = {}
 
-        self.notify("ncm2_pyclang#_proc_started")
+        self.queue = queue.Queue()
+        self.worker = threading.Thread(target=self.worker_loop)
+        self.worker.daemon = True
+        self.worker.start()
+
+    def join_queue(self):
+        if self.worker.is_alive() and \
+                self.worker is not threading.current_thread():
+            self.queue.join()
+
+    def worker_loop(self):
+        while True:
+            name, task = self.queue.get()
+            if task is None:
+                break
+            logger.info('begin task %s', name)
+            try:
+                task()
+                logger.info('task %s finished', name)
+            except ErrTaskCancel as ex:
+                logger.info('task %s canceled, %s', name, ex)
+            except Exception as ex:
+                from neovim import Nvim
+                nvim = self.nvim  # type: Nvim
+                def raise_ex():
+                    raise ex
+                nvim.async_call(raise_ex)
+            finally:
+                self.queue.task_done()
 
     def notify(self, method: str, *args):
         self.nvim.call(method, *args, async_=True)
 
     def get_args_dir(self, data):
+        self.join_queue()
         context = data['context']
         cwd = data['cwd']
         database_path = data['database_path']
@@ -75,12 +110,9 @@ class Source(Ncm2Source):
         return [args, run_dir]
 
     def cache_add(self, data, lines):
-        self.do_cache_add(data,
-                          lines,
-                          True)
-        self.do_cache_add(data,
-                          lines,
-                          False)
+        self.join_queue()
+        self.do_cache_add(data, lines, True)
+        self.do_cache_add(data, lines, False)
 
     def do_cache_add(self, data, lines, for_completion):
         context = data['context']
@@ -124,6 +156,7 @@ class Source(Ncm2Source):
                      end - start)
 
     def cache_del(self, filepath):
+        self.join_queue()
         if filepath in self.cmpl_tu:
             del self.cmpl_tu[filepath]
             logger.info('completion cache %s has been removed', filepath)
@@ -238,7 +271,8 @@ class Source(Ncm2Source):
 
         includes = []
         next_is_include = False
-        opts = ['-I', '-isystem', '-internal-isystem', '-internal-externc-isystem']
+        opts = ['-I', '-isystem', '-internal-isystem',
+                '-internal-externc-isystem']
         for arg in args:
             if not next_is_include:
                 if arg in opts:
@@ -292,6 +326,17 @@ class Source(Ncm2Source):
         self.complete(context, startccol, matches)
 
     def on_complete(self, context, data, lines):
+        self.on_complete_context_id = context['context_id']
+        self.queue.put(['on_complete',
+                        lambda: self.on_complete_task(context, data, lines)])
+
+    def on_complete_task(self, context, data, lines):
+        context_id = context['context_id']
+
+        def check_context_id(info, *args):
+            if context_id != self.on_complete_context_id:
+                raise ErrTaskCancel(info % (*args,))
+
         data['context'] = context
         src = self.get_src("\n".join(lines), context)
         filepath = context['filepath']
@@ -300,6 +345,8 @@ class Source(Ncm2Source):
         lnum = context['lnum']
         base = context['base']
         typed = context['typed']
+
+        check_context_id('get_args_dir')
 
         args, directory = self.get_args_dir(data)
 
@@ -313,7 +360,11 @@ class Source(Ncm2Source):
 
         start = time.time()
 
+        check_context_id('get_tu')
+
         tu = self.get_tu(filepath, args, directory, src)
+
+        check_context_id('codeComplete')
 
         unsaved = [filepath, src]
         cr = tu.codeComplete(filepath,
@@ -328,17 +379,10 @@ class Source(Ncm2Source):
 
         matcher = self.matcher_get(context['matcher'])
 
-        last_check = time.time()
-
         matches = []
         for i, res in enumerate(results):
             now = time.time()
-            if last_check + 0.2 < now:
-                last_check = now
-                dated = self.nvim.call('ncm2#context_dated', context)
-                if dated:
-                    logger.info("ncm2#context_dated %s, cancel completion %s/%s", dated, i, len(results))
-                    return
+            check_context_id('complete result %s/%s', i + 1, len(results))
             item = self.format_complete_item(context, matcher, base, res)
             if item is None:
                 continue
@@ -354,7 +398,8 @@ class Source(Ncm2Source):
         logger.debug("total time: %s, codeComplete time: %s, matches %s -> %s",
                      end - start, cr_end - start, len(results), len(matches))
 
-        self.complete(context, startccol, matches)
+        self.nvim.async_call(lambda:
+                             self.complete(context, startccol, matches))
 
     def format_complete_item(self, context, matcher, base, result):
         result_type = None
@@ -439,6 +484,8 @@ class Source(Ncm2Source):
         return '${%s:%s}' % (num, txt)
 
     def find_declaration(self, data, lines):
+        self.join_queue()
+
         context = data['context']
         src = self.get_src("\n".join(lines), context)
         filepath = context['filepath']

@@ -49,10 +49,6 @@ func! ncm2_pyclang#init()
     call ncm2#register_source(g:ncm2_pyclang#source)
 endfunc
 
-func! ncm2_pyclang#_proc_started()
-    call ncm2_pyclang#on_warmup(ncm2#context(g:ncm2_pyclang#source))
-endfunc
-
 func! ncm2_pyclang#on_warmup(ctx)
     if &filetype != 'cpp' && &filetype != 'c'
         call g:ncm2_pyclang#proc.jobstart()
