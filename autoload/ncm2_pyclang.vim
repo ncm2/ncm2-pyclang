@@ -11,6 +11,14 @@ let g:ncm2_pyclang#clang_path = get(g:,
             \ 'ncm2_pyclang#clang_path',
             \ 'clang')
 
+let g:ncm2_pyclang#completion_settings = get(g:,
+            \ 'ncm2_pyclang#completion_settings', {
+            \   'include_macros': 1,
+            \   'include_code_patterns': 1,
+            \   'include_fixits': 1,
+            \   'skip_preamble': 0,
+            \ })
+
 let g:ncm2_pyclang#database_path = get(g:,
             \ 'ncm2_pyclang#database_path',
             \ [
@@ -126,6 +134,8 @@ func! s:data(context)
                 \ 'args_file_path': g:ncm2_pyclang#args_file_path,
                 \ 'context': a:context,
                 \ 'clang_path': g:ncm2_pyclang#clang_path,
+                \ 'completion_settings':
+                \ g:ncm2_pyclang#completion_settings,
                 \ }
 endfunc
 

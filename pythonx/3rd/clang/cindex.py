@@ -2635,6 +2635,30 @@ class CodeCompletionResults(ClangObject):
     def __del__(self):
         conf.lib.clang_disposeCodeCompleteResults(self)
 
+    def get_fixits(self, completion_index):
+        class FixItIterator:
+            def __init__(self, ccr, index):
+                self.ccr = ccr
+                self.index = index
+
+            def __len__(self):
+                try:
+                    return int(conf.lib.clang_getCompletionNumFixIts(self.ccr, self.index))
+                except:
+                    return 0
+
+            def __getitem__(self, key):
+                source_range = SourceRange()
+                value = conf.lib.clang_getCompletionFixIt(self.ccr,
+                        self.index,
+                        key,
+                        byref(source_range))
+                if len(value) == 0:
+                    raise IndexError
+
+                return FixIt(source_range, value)
+        return FixItIterator(self, completion_index)
+
     @property
     def results(self):
         return self.ptr.contents
@@ -3003,7 +3027,8 @@ class TranslationUnit(ClangObject):
 
     def codeComplete(self, path, line, column, unsaved_files=None,
                      include_macros=False, include_code_patterns=False,
-                     include_brief_comments=False):
+                     include_brief_comments=False, skip_preamble=False,
+                     include_fixits=False):
         """
         Code complete in this translation unit.
 
@@ -3022,6 +3047,12 @@ class TranslationUnit(ClangObject):
 
         if include_brief_comments:
             options += 4
+
+        if skip_preamble:
+            options += 8
+
+        if include_fixits:
+            options += 0x10
 
         if unsaved_files is None:
             unsaved_files = []
@@ -3515,6 +3546,15 @@ functionList = [
 
   ("clang_getCompletionChunkText",
    [c_void_p, c_int],
+   _CXString,
+   _CXString.from_result),
+
+  ("clang_getCompletionNumFixIts",
+   [POINTER(CCRStructure), c_uint],
+   c_uint),
+
+  ("clang_getCompletionFixIt",
+   [POINTER(CCRStructure), c_uint, c_uint, POINTER(SourceRange)],
    _CXString,
    _CXString.from_result),
 

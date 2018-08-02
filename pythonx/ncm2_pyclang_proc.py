@@ -211,7 +211,7 @@ class Source(Ncm2Source):
                 cindex.TranslationUnit.PARSE_SKIP_FUNCTION_BODIES | \
                 CXTranslationUnit_KeepGoing
 
-        logger.info("flags %s", flags)
+        logger.info("flags %s, args %s", flags, args)
 
         unsaved = (filepath, src)
 
@@ -320,8 +320,7 @@ class Source(Ncm2Source):
                              lnum,
                              bcol,
                              [unsaved],
-                             include_macros=True,
-                             include_code_patterns=True)
+                             **data['completion_settings'])
         results = cr.results
 
         cr_end = time.time()
@@ -329,15 +328,16 @@ class Source(Ncm2Source):
         matcher = self.matcher_get(context['matcher'])
 
         matches = []
-        for res in results:
-            item = self.format_complete_item(context, matcher, base, res)
+        for completion_index, res in enumerate(results):
+            item = self.format_complete_item(context,
+                                             matcher,
+                                             base,
+                                             res,
+                                             cr.get_fixits(completion_index))
             if item is None:
                 continue
             # filter it's kind of useless for completion
             if item['word'].startswith('operator '):
-                continue
-            item = self.match_formalize(context, item)
-            if not matcher(base, item):
                 continue
             matches.append(item)
 
@@ -347,7 +347,7 @@ class Source(Ncm2Source):
 
         self.complete(context, startccol, matches)
 
-    def format_complete_item(self, context, matcher, base, result):
+    def format_complete_item(self, context, matcher, base, result, fixits):
         result_type = None
         word = ''
         snippet = ''
@@ -419,6 +419,36 @@ class Source(Ncm2Source):
         completion['menu'] = menu
         completion['info'] = info
         completion['dup'] = 1
+
+        # parse fixits
+        list_fixits = []
+        # old versions doesn't have fixit
+        for idx in range(len(fixits)):
+            fixit = fixits[idx]
+            # FIXME fixit.range.file is ignored, it should always be in the
+            # same file
+            value = fixit.value
+            start = fixit.range.start
+            end = fixit.range.end
+            list_fixits.append({
+                'range': {
+                    'start': {
+                        'lnum': start.line + 1,
+                        # FIXME bcol -> ccol
+                        'bcol': start.column + 1,
+                    },
+                    'end': {
+                        'lnum': end.line + 1,
+                        # FIXME bcol -> ccol
+                        'bcol': end.column + 1,
+                    },
+                },
+                'text': value
+            })
+        ud['fixits'] = list_fixits
+        if list_fixits:
+            ud['is_snippet'] = 1
+
         return completion
 
     def lsp_snippet_placeholder(self, num, txt=''):
