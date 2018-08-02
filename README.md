@@ -76,13 +76,3 @@ accurate include completion.
     autocmd FileType c,cpp nnoremap <buffer> gd :<c-u>call ncm2_pyclang#goto_declaration()<cr>
 ```
 
-### Disable Variable Name Completion
-
-If the cpp source file has included some heavy header files. There will be
-tens of thounds of symbols to be filtered for variable name completion, the
-filtering stage may get extremely slow. Add the following code into your vmirc
-to disable variable completion.  Member completion is still available.
-
-```vim
-let g:ncm2_pyclang#source = {'complete_length': -1}
-```

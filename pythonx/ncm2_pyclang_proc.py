@@ -7,8 +7,8 @@ from os.path import dirname
 from os import path, scandir
 import vim
 import json
-import time
 import shlex
+import time
 
 import sys
 sys.path.insert(0, path.join(dirname(__file__), '3rd'))
@@ -328,8 +328,17 @@ class Source(Ncm2Source):
 
         matcher = self.matcher_get(context['matcher'])
 
+        last_check = time.time()
+
         matches = []
-        for res in results:
+        for i, res in enumerate(results):
+            now = time.time()
+            if last_check + 0.2 < now:
+                last_check = now
+                dated = self.nvim.call('ncm2#context_dated', context)
+                if dated:
+                    logger.info("ncm2#context_dated %s, cancel completion %s/%s", dated, i, len(results))
+                    return
             item = self.format_complete_item(context, matcher, base, res)
             if item is None:
                 continue
