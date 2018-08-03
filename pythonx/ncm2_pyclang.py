@@ -1,5 +1,5 @@
 from ncm2 import getLogger
-from os.path import dirname, join, isfile, samefile, expanduser, expandvars
+from os.path import dirname, join, isfile, normpath, expanduser, expandvars
 from pathlib import Path
 import shlex
 import json
@@ -29,13 +29,16 @@ def args_from_cmake(filepath, cwd, database_paths):
     if not cfg_path:
         return None, None
 
+    filepath = normpath(filepath)
+
     try:
         with open(cfg_path, "r") as f:
             commands = json.load(f)
 
             for cmd in commands:
                 try:
-                    if samefile(join(cmd['directory'], cmd['file']), filepath):
+                    cmd_for = join(cmd['directory'], cmd['file'])
+                    if normpath(cmd_for) == filepath:
                         logger.info("compile_commands: %s", cmd)
                         args = _extract_args_from_cmake(cmd)
                         return args, cmd['directory']
