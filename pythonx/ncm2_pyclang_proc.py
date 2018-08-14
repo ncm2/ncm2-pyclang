@@ -230,6 +230,8 @@ class Source(Ncm2Source):
         CXTranslationUnit_KeepGoing = 0x200
         CXTranslationUnit_CreatePreambleOnFirstParse = 0x100
 
+        args.insert(0, '-working-directory=' + directory)
+
         if not for_completion:
             flags = cindex.TranslationUnit.PARSE_PRECOMPILED_PREAMBLE | \
                 cindex.TranslationUnit.PARSE_INCOMPLETE | \
