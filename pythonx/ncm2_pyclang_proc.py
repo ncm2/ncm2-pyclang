@@ -11,6 +11,7 @@ import shlex
 import time
 import threading
 import queue
+import traceback
 
 import sys
 sys.path.insert(0, path.join(dirname(__file__), '3rd'))
@@ -67,11 +68,8 @@ class Source(Ncm2Source):
             except ErrTaskCancel as ex:
                 logger.info('task %s canceled, %s', name, ex)
             except Exception as ex:
-                from neovim import Nvim
-                nvim = self.nvim  # type: Nvim
-                def raise_ex():
-                    raise ex
-                nvim.async_call(raise_ex)
+                traceback.print_exc()
+                logger.exception()
             finally:
                 self.queue.task_done()
 
