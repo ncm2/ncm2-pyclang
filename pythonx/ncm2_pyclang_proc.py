@@ -69,7 +69,7 @@ class Source(Ncm2Source):
                 logger.info('task %s canceled, %s', name, ex)
             except Exception as ex:
                 traceback.print_exc()
-                logger.exception()
+                logger.exception('exception: %s', ex)
             finally:
                 self.queue.task_done()
 
