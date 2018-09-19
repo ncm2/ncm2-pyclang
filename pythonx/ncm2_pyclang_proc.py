@@ -177,7 +177,7 @@ class Source(Ncm2Source):
                 self.reparse_tu(tu, filepath, src)
                 return item['tu']
             logger.info("%s tu invalidated by check %s -> %s",
-                        check, item['check'])
+                        filepath, check, item['check'])
             self.cache_del(filepath)
 
         logger.info("cache miss")
