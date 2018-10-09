@@ -228,7 +228,7 @@ class Source(Ncm2Source):
         CXTranslationUnit_KeepGoing = 0x200
         CXTranslationUnit_CreatePreambleOnFirstParse = 0x100
 
-        args.insert(0, '-working-directory=' + directory)
+        args = ['-working-directory='] + args
 
         if not for_completion:
             flags = cindex.TranslationUnit.PARSE_PRECOMPILED_PREAMBLE | \
@@ -352,10 +352,10 @@ class Source(Ncm2Source):
 
         inc_match = self.include_pat.search(typed)
         if inc_match:
-            matches = self.get_include_completions(data,
-                                                   args,
-                                                   directory,
-                                                   inc_match.group(1))
+            self.get_include_completions(data,
+                                         args,
+                                         directory,
+                                         inc_match.group(1))
             return
 
         start = time.time()
