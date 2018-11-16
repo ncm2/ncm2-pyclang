@@ -323,7 +323,9 @@ class Source(Ncm2Source):
                 logger.exception('scandir failed for %s', inc)
 
         startccol = context['ccol'] - len(base)
-        self.complete(context, startccol, matches)
+
+        cb = lambda: self.complete(context, startccol, matches)
+        self.nvim.async_call(cb)
 
     def on_complete(self, context, data, lines):
         self.on_complete_context_id = context['context_id']
@@ -398,8 +400,8 @@ class Source(Ncm2Source):
         logger.debug("total time: %s, codeComplete time: %s, matches %s -> %s",
                      end - start, cr_end - start, len(results), len(matches))
 
-        self.nvim.async_call(lambda:
-                             self.complete(context, startccol, matches))
+        cb = lambda: self.complete(context, startccol, matches)
+        self.nvim.async_call(cb)
 
     def format_complete_item(self, context, matcher, base, result):
         result_type = None
