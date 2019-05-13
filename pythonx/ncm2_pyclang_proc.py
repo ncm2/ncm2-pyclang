@@ -51,6 +51,35 @@ class Source(Ncm2Source):
         self.worker.daemon = True
         self.worker.start()
 
+        gcc_path = nvim.vars['ncm2_pyclang#gcc_path']
+        sys_include = {}
+        sys_include['cpp'] = self.get_system_include(gcc_path, ['-xc++'])
+        sys_include['c'] = self.get_system_include(gcc_path, ['-xc'])
+
+        self.args_system_include = sys_include
+
+    def get_system_include(self, gcc_path, args):
+        args += ['-E', '-Wp,-v', '-']
+
+        proc = Popen(args=[gcc_path] + args,
+                     stdin=subprocess.PIPE,
+                     stdout=subprocess.PIPE,
+                     stderr=subprocess.PIPE)
+
+        outdata, errdata = proc.communicate('', timeout=2)
+
+        errdata = errdata.decode()
+
+        lines = errdata.split('\n')
+
+        res = []
+        for line in lines:
+            if line.startswith(' /'):
+                res += ['-isystem', line.strip()]
+
+        logger.debug('system include: %s', res)
+        return res
+
     def join_queue(self):
         if self.worker.is_alive() and \
                 self.worker is not threading.current_thread():
@@ -100,10 +129,16 @@ class Source(Ncm2Source):
 
         if context['scope'] == 'cpp':
             args.append('-xc++')
+            stdinc = 'cpp'
         elif context['filetype'] == 'cpp':
             args.append('-xc++')
+            stdinc = 'cpp'
         else:
             args.append('-xc')
+            stdinc = 'c'
+
+        if '-nostdinc' not in args:
+            args += self.args_system_include[stdinc]
 
         return [args, run_dir]
 

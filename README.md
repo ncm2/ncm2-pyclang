@@ -84,6 +84,12 @@ This option defaults to `clang`. `clang` is invoked with `clang -###` to find
 all the include directories used by clang, so that this plugin could provide
 accurate include completion.
 
+### `g:ncm2_pyclang#gcc_path`
+
+This option defaults to `gcc`. For some reason (I don't know), clang does not
+handle c++ builtin headers. This plugin uses `gcc -xc++ -E -Wp,-v -` to get a
+list of system header path.
+
 ### Goto Declaration
 
 ```vim

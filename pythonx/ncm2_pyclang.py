@@ -15,7 +15,7 @@ def _extract_args_from_cmake(filepath, cmd):
         return pick_useful_args_from_cmd(filepath, cmd['arguments'])
     else:
         return None
-    
+
 def args_from_cmake(filepath, cwd, database_paths):
     filedir = dirname(filepath)
 

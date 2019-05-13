@@ -11,6 +11,10 @@ let g:ncm2_pyclang#clang_path = get(g:,
             \ 'ncm2_pyclang#clang_path',
             \ 'clang')
 
+let g:ncm2_pyclang#gcc_path = get(g:,
+            \ 'ncm2_pyclang#gcc_path',
+            \ 'gcc')
+
 let g:ncm2_pyclang#database_path = get(g:,
             \ 'ncm2_pyclang#database_path',
             \ [
