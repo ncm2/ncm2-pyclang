@@ -16,7 +16,7 @@ import traceback
 import sys
 sys.path.insert(0, path.join(dirname(__file__), '3rd'))
 
-from ncm2_pyclang import args_from_cmake, args_from_clang_complete
+from ncm2_pyclang import args_from_cmake, args_from_clang_complete, args_from_kbuild
 from clang import cindex
 from clang.cindex import CodeCompletionResult, CompletionString, SourceLocation, Cursor, File, Diagnostic
 
@@ -84,19 +84,19 @@ class Source(Ncm2Source):
         filepath = context['filepath']
         args_file_path = data['args_file_path']
 
-        args = []
+        args, run_dir = args_from_cmake(filepath, cwd, database_path)
 
-        run_dir = cwd
-        cmake_args, directory = args_from_cmake(filepath, cwd, database_path)
-        if cmake_args is not None:
-            args = cmake_args
-            run_dir = directory
-        else:
-            clang_complete_args, directory = args_from_clang_complete(
-                filepath, cwd, args_file_path)
-            if clang_complete_args:
-                args = clang_complete_args
-                run_dir = directory
+        if args is None:
+            args, run_dir = args_from_kbuild(filepath, cwd)
+
+        if args is None:
+            args, run_dir = args_from_clang_complete(filepath, cwd, args_file_path)
+
+        if args is None:
+            args = []
+
+        if run_dir is None:
+            run_dir = cwd
 
         if context['scope'] == 'cpp':
             args.append('-xc++')
@@ -265,6 +265,9 @@ class Source(Ncm2Source):
 
     def get_include_completions(self, data, args, directory, inc_typed):
         context = data['context']
+
+        # convert gcc based options to clang internal options, we need this to
+        # get standard libraries header path
         cc1 = self.args_to_clang_cc1(data, args, directory)
         if cc1:
             args = cc1

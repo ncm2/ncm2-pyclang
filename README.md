@@ -7,6 +7,13 @@ This plugin is based on [libclang python
 binding](https://github.com/llvm-mirror/clang). Inspired by
 [clang_complete](https://github.com/Rip-Rip/clang_complete).
 
+Features:
+
+- Support CMake or similar build systems that generate `compile_commands.json`
+- Support `.clang_complete` like [clang-complete](https://github.com/Rip-Rip/clang_complete)
+- support Kbuild (for linux kernel) which generates something like
+  `init/.main.o.cmd`
+
 ## Config
 
 ### `g:ncm2_pyclang#library_path`
@@ -37,7 +44,14 @@ Notes:
   old and is not guranteed to always be found, so I highly recommend set
   `g:ncm_clang#library_path` explicitly.
 
-### `g:ncm2_pyclang#database_path `
+### `g:ncm2_pyclang#database_path`
+
+Usually, invoking cmake with option
+[-DCMAKE_EXPORT_COMPILE_COMMANDS=ON](https://cmake.org/cmake/help/v3.5/variable/CMAKE_EXPORT_COMPILE_COMMANDS.html)
+generates the compilation database `compile_commands.json`.
+
+The config `g:ncm2_pyclang#database_path` tells this plugin where to look for
+compilation database.
 
 ```vim
 " a list of relative paths for compile_commands.json
