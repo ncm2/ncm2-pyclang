@@ -11,7 +11,7 @@ Features:
 
 - Support CMake or similar build systems that generate `compile_commands.json`
 - Support `.clang_complete` like [clang-complete](https://github.com/Rip-Rip/clang_complete)
-- support Kbuild (for linux kernel) which generates something like
+- Support Kbuild for linux kernel and u-boot, it generates something like
   `init/.main.o.cmd`
 - Support goto declaration. (not goto definition)
 - Support #include completion.
