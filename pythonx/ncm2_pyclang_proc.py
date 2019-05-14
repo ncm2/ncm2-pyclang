@@ -223,41 +223,6 @@ class Source(Ncm2Source):
                               src,
                               for_completion=for_completion)
 
-    def args_to_clang_cc1(self, data, args, directory):
-        # Translate to clang args
-        # clang-5.0 -### -x c++  -c -
-        cmd = [data['clang_path'], '-###'] + args + ['-']
-        logger.debug('to clang cc1 cmd: %s', cmd)
-
-        proc = Popen(args=cmd,
-                     stdin=subprocess.PIPE,
-                     stdout=subprocess.PIPE,
-                     stderr=subprocess.PIPE)
-
-        outdata, errdata = proc.communicate('', timeout=2)
-        logger.debug('outdata: %s, errdata: %s', outdata, errdata)
-        if proc.returncode != 0:
-            return None
-
-        errdata = errdata.decode()
-
-        lines = errdata.splitlines()
-        installed_dir_found = False
-        for line in lines:
-            if not installed_dir_found:
-                if line.startswith('InstalledDir:'):
-                    installed_dir_found = True
-                continue
-            args = shlex.split(line)
-            # remove clang binary and the last '-', insert working directory
-            # after -cc1
-            args = args[1:-1]
-            args.insert(1, '-working-directory=' + directory)
-            logger.debug('-cc1 args: %s', args)
-            return args
-
-        return None
-
     def create_tu(self, filepath, args, directory, src, for_completion):
 
         CXTranslationUnit_KeepGoing = 0x200
@@ -300,12 +265,6 @@ class Source(Ncm2Source):
 
     def get_include_completions(self, data, args, directory, inc_typed):
         context = data['context']
-
-        # convert gcc based options to clang internal options, we need this to
-        # get standard libraries header path
-        cc1 = self.args_to_clang_cc1(data, args, directory)
-        if cc1:
-            args = cc1
 
         includes = []
         next_is_include = False

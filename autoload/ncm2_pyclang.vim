@@ -7,10 +7,6 @@ let g:ncm2_pyclang#library_path = get(g:,
             \ 'ncm2_pyclang#library_path',
             \ '')
 
-let g:ncm2_pyclang#clang_path = get(g:,
-            \ 'ncm2_pyclang#clang_path',
-            \ 'clang')
-
 let g:ncm2_pyclang#gcc_path = get(g:,
             \ 'ncm2_pyclang#gcc_path',
             \ 'gcc')
@@ -127,7 +123,6 @@ func! s:data(context)
                 \ 'database_path': g:ncm2_pyclang#database_path,
                 \ 'args_file_path': g:ncm2_pyclang#args_file_path,
                 \ 'context': a:context,
-                \ 'clang_path': g:ncm2_pyclang#clang_path,
                 \ }
 endfunc
 

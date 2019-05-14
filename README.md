@@ -78,12 +78,6 @@ something like:
 let g:ncm2_pyclang#args_file_path = ['.clang_complete']
 ```
 
-### `g:ncm2_pyclang#clang_path`
-
-This option defaults to `clang`. `clang` is invoked with `clang -###` to find
-all the include directories used by clang, so that this plugin could provide
-accurate include completion.
-
 ### `g:ncm2_pyclang#gcc_path`
 
 This option defaults to `gcc`. For some reason (I don't know), clang does not
