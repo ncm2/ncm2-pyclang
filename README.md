@@ -13,6 +13,8 @@ Features:
 - Support `.clang_complete` like [clang-complete](https://github.com/Rip-Rip/clang_complete)
 - support Kbuild (for linux kernel) which generates something like
   `init/.main.o.cmd`
+- Support goto declaration. (not goto definition)
+- Support #include completion.
 
 ## Config
 
