@@ -57,9 +57,10 @@ class Source(Ncm2Source):
         auto_detect = nvim.vars['ncm2_pyclang#detect_sys_inc_args']
 
         sys_inc = {}
-        if auto_detect and find_executable(gcc_path) :
-            sys_inc['cpp'] = self.get_system_include(gcc_path, ['-xc++'])
-            sys_inc['c'] = self.get_system_include(gcc_path, ['-xc'])
+        gcc_exe = find_executable(gcc_path)
+        if auto_detect and gcc_exe:
+            sys_inc['cpp'] = self.get_system_include(gcc_exe, ['-xc++'])
+            sys_inc['c'] = self.get_system_include(gcc_exe, ['-xc'])
         else:
             if auto_detect:
                 # warning if auto detection failed
@@ -69,10 +70,36 @@ class Source(Ncm2Source):
 
         self.args_system_include = sys_inc
 
-    def get_system_include(self, gcc_path, args):
+    def get_system_include(self, gcc, args):
+
+        # $ gcc -xc++ -E -Wp,-v -
+        # ignoring duplicate directory "/usr/include/x86_64-linux-gnu/c++/7"
+        # ignoring nonexistent directory "/usr/local/include/x86_64-linux-gnu"
+        # ignoring nonexistent directory "/usr/lib/gcc/x86_64-linux-gnu/7/../../../../x86_64-linux-gnu/include"
+        # #include "..." search starts here:
+        # #include <...> search starts here:
+        #  /usr/include/c++/7
+        #  /usr/include/x86_64-linux-gnu/c++/7
+        #  /usr/include/c++/7/backward
+        #  /usr/lib/gcc/x86_64-linux-gnu/7/include
+        #  /usr/local/include
+        #  /usr/lib/gcc/x86_64-linux-gnu/7/include-fixed
+        #  /usr/include/x86_64-linux-gnu
+        #  /usr/include
+        # End of search list.
         args += ['-E', '-Wp,-v', '-']
 
-        proc = Popen(args=[gcc_path] + args,
+        # Gcc is installed on Cygwin or MinGW, we need to prefix the include
+        # directories with cygwin/mingw base path
+        prefix = ''
+        if sys.platform == 'win32':
+            gcc_dir = dirname(gcc)
+            if gcc_dir.endswith('\\usr\\bin'):
+                prefix = gcc_dir[ : len(gcc_dir) - len('usr\\bin')]
+            elif gcc_dir.endswith('\\bin'):
+                prefix = gcc_dir[ : len(gcc_dir) - len('bin')]
+
+        proc = Popen(args=[gcc] + args,
                      stdin=subprocess.PIPE,
                      stdout=subprocess.PIPE,
                      stderr=subprocess.PIPE)
@@ -86,7 +113,9 @@ class Source(Ncm2Source):
         res = []
         for line in lines:
             if line.startswith(' /'):
-                res += ['-isystem', line.strip()]
+                # do not use path.join here
+                inc_dir = prefix + line.strip()
+                res += ['-isystem', inc_dir]
 
         logger.debug('system include: %s', res)
         return res
