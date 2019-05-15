@@ -12,6 +12,7 @@ import time
 import threading
 import queue
 import traceback
+from distutils.spawn import find_executable
 
 import sys
 sys.path.insert(0, path.join(dirname(__file__), '3rd'))
@@ -52,11 +53,21 @@ class Source(Ncm2Source):
         self.worker.start()
 
         gcc_path = nvim.vars['ncm2_pyclang#gcc_path']
-        sys_include = {}
-        sys_include['cpp'] = self.get_system_include(gcc_path, ['-xc++'])
-        sys_include['c'] = self.get_system_include(gcc_path, ['-xc'])
 
-        self.args_system_include = sys_include
+        auto_detect = nvim.vars['ncm2_pyclang#detect_sys_inc_args']
+
+        sys_inc = {}
+        if auto_detect and find_executable(gcc_path) :
+            sys_inc['cpp'] = self.get_system_include(gcc_path, ['-xc++'])
+            sys_inc['c'] = self.get_system_include(gcc_path, ['-xc'])
+        else:
+            if auto_detect:
+                # warning if auto detection failed
+                nvim.call('ncm2_pyclang#warn', 'g:ncm2_pyclang#gcc_path(' + gcc_path \
+                        + ' exe not found, use ncm2_pyclang#sys_inc_args_fallback')
+            sys_inc = nvim.vars['ncm2_pyclang#sys_inc_args_fallback']
+
+        self.args_system_include = sys_inc
 
     def get_system_include(self, gcc_path, args):
         args += ['-E', '-Wp,-v', '-']
