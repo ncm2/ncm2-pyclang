@@ -11,6 +11,23 @@ let g:ncm2_pyclang#gcc_path = get(g:,
             \ 'ncm2_pyclang#gcc_path',
             \ 'gcc')
 
+let g:ncm2_pyclang#sys_inc_args_fallback = get(g:, 'ncm2_pyclang#sys_inc_args_fallback', {})
+
+let g:ncm2_pyclang#detect_sys_inc_args = get(g:, 'ncm2_pyclang#detect_sys_inc_args', 1)
+
+if !has_key(g:ncm2_pyclang#sys_inc_args_fallback, 'c')
+   let g:ncm2_pyclang#sys_inc_args_fallback.c = [
+                \ '-isystem', '/usr/local/include',
+                \ '-isystem', '/usr/include']
+endif
+
+if !has_key(g:ncm2_pyclang#sys_inc_args_fallback, 'cpp')
+   let g:ncm2_pyclang#sys_inc_args_fallback.cpp = [
+                \ '-isystem', '/usr/local/include',
+                \ '-isystem', '/usr/include']
+endif
+
+
 let g:ncm2_pyclang#database_path = get(g:,
             \ 'ncm2_pyclang#database_path',
             \ [
@@ -116,6 +133,10 @@ endfunc
 
 func! ncm2_pyclang#error(msg)
     call g:ncm2_pyclang#proc.error(a:msg)
+endfunc
+
+func! ncm2_pyclang#warn(msg)
+    call g:ncm2_pyclang#proc.warn(a:msg)
 endfunc
 
 func! s:data(context)

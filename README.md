@@ -86,6 +86,12 @@ This option defaults to `gcc`. For some reason (I don't know), clang does not
 handle c++ builtin headers. This plugin uses `gcc -xc++ -E -Wp,-v -` to get a
 list of system header path.
 
+If `gcc` is not available on your system, this plugin fallbacks to options
+definged in `g:ncm2_pyclang#sys_inc_args_fallback`.
+
+You can open a C/C++ file, then execute `:echo ncm2_pyclang#get_args_dir()` to
+print the compiler arguments picked and passed to libclang.
+
 ### Goto Declaration
 
 ```vim
