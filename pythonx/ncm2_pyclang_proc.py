@@ -89,10 +89,12 @@ class Source(Ncm2Source):
         # End of search list.
         args += ['-E', '-Wp,-v', '-']
 
+        gcc_is_cygwin = sys.platform == 'win32'
+
         # Gcc is installed on Cygwin or MinGW, we need to prefix the include
         # directories with cygwin/mingw base path
         prefix = ''
-        if sys.platform == 'win32':
+        if gcc_is_cygwin:
             gcc_dir = dirname(gcc)
             if gcc_dir.endswith('\\usr\\bin'):
                 prefix = gcc_dir[ : len(gcc_dir) - len('usr\\bin')]
@@ -113,9 +115,12 @@ class Source(Ncm2Source):
         res = []
         for line in lines:
             if line.startswith(' /'):
-                # do not use path.join here
-                inc_dir = prefix + line.strip()
-                res += ['-isystem', inc_dir]
+                inc_dir = line.strip()
+                res += ['-isystem', prefix + inc_dir]
+                # cygwin uses symlink /usr/lib -> /lib, the directory cannot be
+                # accessed with Windows file explorer
+                if gcc_is_cygwin and inc_dir.startswith('/usr/lib/'):
+                    res += ['-isystem', prefix + inc_dir.replace('/usr/lib/', '/lib/')]
 
         logger.debug('system include: %s', res)
         return res
