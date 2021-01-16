@@ -141,7 +141,10 @@ def pick_useful_args_from_cmd(filepath, cmd):
     if type(cmd) is str:
         cmd = shlex.split(cmd)
 
-    args = cmd[1:]
+    if cmd and cmd[0][:1] != '-':
+        args = cmd[1:]
+    else:
+        args = cmd
 
     # filter for ccache
     while args and not args[0].startswith("-"):
